@@ -167,4 +167,5 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         print(f"[-]: Skipped URLs    : {skipped}")
         print(f"[!]: Errors          : {errors}")
 
-
+    def convert_bookmarks_to_private(self) -> None:
+        pass

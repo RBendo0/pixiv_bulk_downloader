@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import sys
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +12,7 @@ from .bookmarks import PixivBookmarksDownloader
 from .followings import PixivFollowingsDownloader
 from .pixiv_types import LoginFailedError
 from .const import BOOKMARK_LIST_FILE
+from .const import BOOKMARKS_DIR
 
 if TYPE_CHECKING:
     from pixivpy3.aapi import AppPixivAPI
@@ -24,87 +25,59 @@ SAVE_DIR = Path(os.getenv("SAVE_DIR", Path.home() / "pbd"))
 }
 """
 
-
 def interact(
     aapi: AppPixivAPI,
     f: PixivFollowingsDownloader,
     b: PixivBookmarksDownloader,
 ) -> None:
+
     def getch() -> str:
         c = pwinput.getch()
         print()
-#        return str(c)
         return c.decode(errors="ignore")
 
-    my_info = aapi.user_detail(aapi.user_id)
-    total_following_len = my_info["profile"]["total_follow_users"]
-    total_bookmark_len = my_info["profile"]["total_illust_bookmarks_public"]
+    actions = {
+        "1": b.get_all_bookmarked_works,
+        "2": lambda: b.get_all_bookmarked_works("missing"),
+        "3": lambda: b.get_all_bookmarked_works("chrono"),
+        "4": lambda: b.resume_pending_jobs(BOOKMARKS_DIR),
+        "5": lambda: b.add_list_to_bookmarks(BOOKMARK_LIST_FILE),
+        "6": b.convert_bookmarks_to_private,
+    }
 
-# INIZIO MENU 1
-    print(
-        "[?]: Download all works of following? "
-        f"({total_following_len} artists) (n/y): !!!DISABLED!!!",
-        flush=True,
-        end="",
-    )
-#   c = getch()
-#   print("DEBUG:", repr(c))
-#   if c == "y":
-#       f.get_all_following_works()
-#       print("\033[K[+]: Finish!")
-# FINE MENU 1
+    while True:
 
-# INIZIO MENU 2
-    print(
-        "[?]: Download all bookmarked? " f"({total_bookmark_len} works) (n/y): ",
-        flush=True,
-        end="",
-    )
-    c = getch() 
-    print("DEBUG:", repr(c))
-    if c == "y":
-        b.get_all_bookmarked_works()
-        print("\033[K[+]: Finish!")
-# FINE MENU 2
+        print(
+            "========================\n"
+            " Pixiv Bulk Downloader\n"
+            "========================\n"
+            "\n"
+            "[1] Scarica tutti i preferiti sull'archivio locale\n"
+            "[2] Scarica preferiti non ancora salvati in locale\n"
+            "[3] Scarica gli ultimi preferiti aggiunti di recente\n"
+            "[4] Riprendi scaricamenti lasciati in sospeso\n"
+            "[5] Aggiungi preferiti all'account da una lista di url\n"
+            "[6] Converti preferiti in privati\n"
+            "\n"
+            "[0] Esci\n"
+            "\n"
+            "CTRL+C = Interrompe esecuzione\n"
+        )
 
-# INIZIO MENU 3 Download Incrementale
-    print(
-        "[?]: Download bookmarked not yet in local storage? (n/y): ",
-        flush=True,
-        end="",
-    )
-    c = getch() 
-    print("DEBUG:", repr(c))
-    if c == "y":
-        b.get_all_bookmarked_works("missing")
-        print("\033[K[+]: Finish!")
-# FINE MENU 3
+        c = getch()
 
-# INIZIO MENU 4 Download incrementale cronologia recente
-    print(
-        "[?]: Download only recently added bookmarks? (n/y): ",
-        flush=True,
-        end="",
-    )
-    c = getch() 
-    print("DEBUG:", repr(c))
-    if c == "y":
-        b.get_all_bookmarked_works("chrono")
-        print("\033[K[+]: Finish!")
-# FINE MENU 4
+        if c == "0":
+            break
 
-# INIZIO MENU 5 Aggiunta di lavori ai bookmarks
-    print(
-        "[?]: Add bookmarked works from list file? (n/y): ",
-        flush=True,
-        end="",
-    )
-    c = getch() 
-    print("DEBUG:", repr(c))
-    if c == "y":
-        b.add_list_to_bookmarks(BOOKMARK_LIST_FILE)
-        print("\033[K[+]: Finish!")
-# FINE MENU 5
+        action = actions.get(c)
+
+        if action is None:
+            print("[!]: Invalid selection.")
+            continue
+
+        action()
+
+        print("[+]: Finish!")
 
 def _main() -> None:
     aapi, login_info = PixivAuth().auth()

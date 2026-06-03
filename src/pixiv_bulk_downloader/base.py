@@ -191,15 +191,6 @@ class PixivBaseDownloader:
             with open(index_file, "w", encoding="utf-8") as f:
                 json.dump(image_data, f)
 
-            # ATTENZIONE Rende il bookmark privato
-#           try:
-#               self.aapi.illust_bookmark_add(id_, restrict="private")
-#           except Exception as e:
-#               print(f"[!]: Bookmark privacy update failed: {id_} -> {e}")
-
-#           print("\033[K\033[A\033[K", end="", flush=True)
-
-
     def rebuild_index(
         self,
         save_path: Path,
@@ -238,30 +229,8 @@ class PixivBaseDownloader:
 
         return data
 
-#   def __download(
-#        self,
-#        links: str | list[str],
-#       title: str,
-#       id_: int,
-#       save_path: Path,
-#   ) -> None:
-#
-#       folder_name = f"{id_}_{title}"
-#       work_dir = save_path / folder_name
-#       work_dir.mkdir(parents=True, exist_ok=True)
-#
-#       if isinstance(links, list):
-#           for link in links:
-#               basename_: str = link.split("/")[-1]
-#               fname = "{}_{}_{}".format(id_, title, basename_.split("_")[-1])
-#               print("\033[K" + fname, end="\r")
-#               print(time.time(), fname)
-#               self.aapi.download(link, path=str(save_path), fname=fname)
-#       elif isinstance(links, str):
-#           link = links
-#           basename_ = link.split("/")[-1]
-#           fname = "{}_{}_{}".format(id_, title, basename_.split("_")[-1])
-#           print("\033[K" + fname, end="\r")
-#           print(time.time(), fname)
-#           self.aapi.download(link, path=str(save_path), fname=fname)
-
+    def resume_pending_jobs(
+        self,
+        save_path: Path,
+    ) -> None:
+        pass
