@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -36,7 +35,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         urls_len = 0
 
         # Lista ID già scaricati
-        local_ids = set()
+        local_ids: set[str] = set()
 
         # Se necessario scarica la lista di tutti i lavori già presenti in locale
         if mode in ("missing", "chrono"):
@@ -57,7 +56,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 #           else:
 #               res_json = self.aapi.user_bookmarks_illust(**next_qs)
 
-            # Passa alla pagina successiva   
+            # Passa alla pagina successiva  
+            assert next_json is not None
             next_qs = self.aapi.parse_qs(next_json["next_url"])
             if next_qs is None:
                 # Raggiunta l'ultima pagina dell'intero set di bookmarks
@@ -65,17 +65,16 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             else:
                 next_json = self.aapi.user_bookmarks_illust(**next_qs)
 
-            # Modalità Chrono, se il primo ID della pagina corrente è presente in locale, termina la scansione
+            # Modalità Chrono, primo ID pagina corrente presente in locale, termina
             if mode == "chrono":
                 if str(res_json["illusts"][0].id) in local_ids:
                     print(
-                        f"\033[K[-]: Last chrono page reached: %s (id: %d)"
-                        % (illust.title, illust.id),
-                        end="\r",
+                        "\033[K[-]: Last chrono page reached.",
+                        end="\n",
                         flush=True,
                     )
                     break
-                # Rileva se quella corrente è l'ultima pagina da scaricare (solo modalità chrono)                
+                # Rileva se e è l'ultima pagina da scaricare (solo modalità chrono)
                 if next_json is not None:
                     is_chrono_last_missing_page = (str(next_json["illusts"][0].id) in local_ids)
 
@@ -84,7 +83,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 # Modalità Missing o Chrono ultima pagina, se l'ID corrente è presente in locale, salta il ciclo
                 if (mode == "missing" or is_chrono_last_missing_page) and str(illust.id) in local_ids:
                     print(
-                        f"\033[K[-]: Already downloaded: %s (id: %d)"
+                        "\033[K[-]: Already downloaded: %s (id: %d)"
                         % (illust.title, illust.id),
                         end="\r",
                         flush=True,
@@ -115,21 +114,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         return urls
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
-    def add_list_to_bookmarks(self, file_path) -> None:
+    def add_list_to_bookmarks(self, file_path: Path) -> None:
 
 #       with open(file_path, "r", encoding="utf-8") as f:
-
 #           for line in f:
 
         lines = file_path.read_text(encoding="utf-8").splitlines()
-
-        total = len(lines)
 
         added = 0
         errors = 0
         skipped = 0
 
-        for idx, line in enumerate(lines):
+        for line in lines:
 
             url = line.strip()
 
