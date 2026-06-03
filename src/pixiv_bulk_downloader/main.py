@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import os
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pwinput  # type: ignore[import-untyped]
-from .my_gppt import PixivAuth
 
 from .bookmarks import PixivBookmarksDownloader
+from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR
 from .followings import PixivFollowingsDownloader
+from .my_gppt import PixivAuth
 from .pixiv_types import LoginFailedError
-from .const import BOOKMARK_LIST_FILE
-from .const import BOOKMARKS_DIR
 
 if TYPE_CHECKING:
     from pixivpy3.aapi import AppPixivAPI

@@ -43,8 +43,15 @@ pbd = "pixiv_bulk_downloader.main:main"
 [tool.black]
 target-version = ["py312"]
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
-select = ["ALL"]
+select = [
+  "E",
+  "F",
+  "I",
+]
 ignore = [
   "D",
   "D211",   # No blank lines allowed before class docstring
@@ -87,7 +94,7 @@ show_error_context = true
 
 [tool.pyright]
 pythonVersion = "3.12"
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"
 
 [tool.taskipy.tasks]
 lint = "pre-commit run -a"

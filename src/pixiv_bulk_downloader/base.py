@@ -1,23 +1,24 @@
 from __future__ import annotations
 
-import random
-import time
-import re
 import json
+import random
+import re
 import shutil
+import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .my_gppt import LoginInfo
     from pixivpy3 import AppPixivAPI
     from pixivpy3.utils import JsonDict
 
+    from .my_gppt import LoginInfo
     from .pixiv_types import IllustInfo
 
 # Legge il nome del file di indicizzazione
 from .const import FETCH_CHECKPOINT_FILE
+
 
 class PixivBaseDownloader:
 
@@ -151,7 +152,7 @@ class PixivBaseDownloader:
             basename = link.split("/")[-1].split("?")[0]
             fname = basename.split("_")[-1]
 
-            print(time.time(), fname)
+            print("\033[K" + fname, end="\r")
 
             self.aapi.download(link, path=str(work_dir), fname=fname)
 
@@ -162,34 +163,22 @@ class PixivBaseDownloader:
 
     def save_index(
         self,
-        data: list[IllustInfo],
+        image_data: IllustInfo,
         save_path: Path,
     ) -> None:
 
         # Se non esiste, crea cartella capostipite
         save_path.mkdir(parents=True, exist_ok=True)
+         
+        # Crea la cartella di indicizzazione
+        work_dir = self.create_dir(save_path, image_data["id"])
 
-        data_len = len(data)
-        d_width = len(str(data_len))
+        # Crea percorso file indice
+        index_file = work_dir / FETCH_CHECKPOINT_FILE
 
-        for idx, image_data in enumerate(data):
-
-            title, id_ = image_data["title"], image_data["id"]
-
-            print(
-                f"\033[K[+]: Indexed [%0{d_width}d/%0{d_width}d]: %s (id: %d)"
-                % (idx + 1, data_len, title, id_),
-            )
-
-            # Crea la cartella di indicizzazione
-            work_dir = self.create_dir(save_path, id_, title)
-
-            # Crea percorso file indice
-            index_file = work_dir / FETCH_CHECKPOINT_FILE
-
-            #salva il record di dati
-            with open(index_file, "w", encoding="utf-8") as f:
-                json.dump(image_data, f)
+        #salva il record di dati
+        with open(index_file, "w", encoding="utf-8") as f:
+            json.dump(image_data, f)
 
     def rebuild_index(
         self,
@@ -233,4 +222,12 @@ class PixivBaseDownloader:
         self,
         save_path: Path,
     ) -> None:
-        pass
+        print("[+]: Rebuilding pending jobs index...")
+        pending = self.rebuild_index(save_path)
+
+        if not pending:
+           print("[!]: No pending jobs found.")
+           return
+
+        print(f"[+]: Found {len(pending)} pending jobs.")
+        self.download(pending, save_path) 

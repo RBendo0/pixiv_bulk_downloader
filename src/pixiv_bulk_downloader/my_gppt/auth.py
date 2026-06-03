@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 from typing import cast
 
-import pwinput
 from pixivpy3 import AppPixivAPI
 
 from .gppt import GetPixivToken

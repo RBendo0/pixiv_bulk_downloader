@@ -17,12 +17,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
     def get_all_bookmarked_works(self, mode: str = "all") -> None:
         print("[+]: Fetching information of bookmarked works...")
         bookmarked_data = self.retrieve_bookmarks(mode)
-
-        # Salva l'indice delle opere da scaricare
-        self.save_index(bookmarked_data, Path(self.save_dir) / "bookmarks")
-
         print("\n[+]: Downloading bookmarked works...")
-        self.download(bookmarked_data, Path(self.save_dir) / "bookmarks")
+        self.download(bookmarked_data, BOOKMARKS_DIR)
 
     def retrieve_bookmarks(self, mode: str = "all") -> list[IllustInfo]:
         urls: list[IllustInfo] = []
@@ -89,19 +85,26 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         flush=True,
                     )
                     continue
-
+#               print(
+#                   f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d)"
+#                   % (urls_len + idx + 1, total, illust.title, illust.id),
+#                   end="\r",
+#                   flush=True,
+#               )
+                image_data: IllustInfo = {
+                    "id": illust.id,
+                    "title": illust.title,
+                    "link": self.ext_links(illust),
+                }
+                if illust.type == "manga":
+                    print(self.ext_links(illust))
+                urls.append(image_data)
+                self.save_index(image_data, BOOKMARKS_DIR)
                 print(
-                    f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d)"
+                    f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d) [Indexed]"
                     % (urls_len + idx + 1, total, illust.title, illust.id),
                     end="\r",
                     flush=True,
-                )
-                urls.append(
-                    {
-                        "id": illust.id,
-                        "title": illust.title,
-                        "link": self.ext_links(illust),
-                    },
                 )
 
             # Aggiorna la pagina successiva
