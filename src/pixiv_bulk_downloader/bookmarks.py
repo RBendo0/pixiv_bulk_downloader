@@ -6,22 +6,25 @@ from typing import TYPE_CHECKING, Any
 
 from .base import PixivBaseDownloader
 from .const import BOOKMARKS_DIR
+from .metadata import PixivMetadata
+from .utils import abort_requested
 
 if TYPE_CHECKING:
     from pixivpy3.utils import JsonDict
-
-    from .pixiv_types import IllustInfo
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
     def get_all_bookmarked_works(self, mode: str = "all") -> None:
         print("[+]: Fetching information of bookmarked works...")
+        print("[i]: Premere Q per interrompere il processo.")
         bookmarked_data = self.retrieve_bookmarks(mode)
         print("\n[+]: Downloading bookmarked works...")
+        print("[i]: Premere Q per interrompere il processo.")
         self.download(bookmarked_data, BOOKMARKS_DIR)
 
-    def retrieve_bookmarks(self, mode: str = "all") -> list[IllustInfo]:
-        urls: list[IllustInfo] = []
+    def retrieve_bookmarks(self, mode: str = "all") -> list[PixivMetadata]:
+        is_abort_requested = False
+        urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
         target_id = self.login_info["response"]["user"]["id"]
         total = self.aapi.user_detail(self.aapi.user_id)["profile"][
@@ -35,7 +38,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         # Se necessario scarica la lista di tutti i lavori già presenti in locale
         if mode in ("missing", "chrono"):
-#           for folder in BOOKMARKS_DIR.iterdir():
             for folder in BOOKMARKS_DIR.rglob("*_*"):
                 local_ids.add(folder.name.split("_")[0])
         
@@ -47,10 +49,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         is_chrono_last_missing_page = False
 
         while next_qs is not None:
-#           if "user_id" not in next_qs:
-#               res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id)
-#           else:
-#               res_json = self.aapi.user_bookmarks_illust(**next_qs)
+
+            # E' stata richiesta l'interruzione, esce dal ciclo
+            if is_abort_requested:
+                break
 
             # Passa alla pagina successiva  
             assert next_json is not None
@@ -76,6 +78,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             for idx, illust in enumerate(res_json["illusts"]):
 
+                # Rileva se è stata richiesta l'interruzione del processo
+                if not is_abort_requested and abort_requested():
+                    print("\n[!]: Richiesta interruzione, attendere completamento pagina corrente.")
+                    is_abort_requested = True
+
                 # Modalità Missing o Chrono ultima pagina, se l'ID corrente è presente in locale, salta il ciclo
                 if (mode == "missing" or is_chrono_last_missing_page) and str(illust.id) in local_ids:
                     print(
@@ -85,19 +92,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         flush=True,
                     )
                     continue
-#               print(
-#                   f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d)"
-#                   % (urls_len + idx + 1, total, illust.title, illust.id),
-#                   end="\r",
-#                   flush=True,
-#               )
-                image_data: IllustInfo = {
-                    "id": illust.id,
-                    "title": illust.title,
-                    "link": self.ext_links(illust),
-                }
-                if illust.type == "manga":
-                    print(self.ext_links(illust))
+                image_data: PixivMetadata = PixivMetadata(illust)               
                 urls.append(image_data)
                 self.save_index(image_data, BOOKMARKS_DIR)
                 print(
@@ -111,16 +106,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             if next_json is not None:
                 res_json = next_json
 
-#           next_qs = self.aapi.parse_qs(res_json["next_url"])
             urls_len = len(urls)
             self.rand_sleep(0.5)
         return urls
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
     def add_list_to_bookmarks(self, file_path: Path) -> None:
-
-#       with open(file_path, "r", encoding="utf-8") as f:
-#           for line in f:
 
         lines = file_path.read_text(encoding="utf-8").splitlines()
 

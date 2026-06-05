@@ -5,8 +5,6 @@ PBD_ROOT: Final[Path] = Path.home() / "pbd"
 
 BOOKMARKS_DIR: Final[Path] = PBD_ROOT / "bookmarks"
 
-FOLLOWINGS_DIR: Final[Path] = PBD_ROOT / "followings"
-
 LISTS_DIR: Final[Path] = PBD_ROOT / "lists"
 
 STATE_DIR: Final[Path] = PBD_ROOT / "state"
@@ -17,3 +15,8 @@ DOWNLOADED_IDS_FILE: Final[Path] = STATE_DIR / "downloaded_ids.txt"
 
 FETCH_CHECKPOINT_FILE: Final[Path] = Path("fetch.json")
 
+WORK_METADATA_FILE: Final[Path] = Path("metadata.json")
+
+UGOIRA_METADATA_FILE: Final[Path] = Path("ugoira.json")
+
+UGOIRA_ZIP_FILE: Final[Path] = Path("ugoira.zip")

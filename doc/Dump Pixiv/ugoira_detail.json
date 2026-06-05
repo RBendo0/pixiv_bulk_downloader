@@ -1,0 +1,81 @@
+{
+    "illust": {
+        "id": 84363507,
+        "title": "Voyage for Poon - Styletest 2",
+        "type": "ugoira",
+        "image_urls": {
+            "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2020/09/14/03/58/59/84363507_square1200.jpg",
+            "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2020/09/14/03/58/59/84363507_master1200.jpg",
+            "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2020/09/14/03/58/59/84363507_master1200.jpg"
+        },
+        "caption": "This is a style test for my animated adaption of an 18+ Voyager comic. &quot;Voyage for Poon&quot; (original comic by Shia)<br /><br />I recalled a tutorial / timelapse from Otaking (of the Tie Fighter animation fame&#44; check his stuff out&#44; he does amazing work) that I saw a while back. In it&#44; he showed a bit of how he took 3D renders of space ships and made them look more hand drawn (it essentially boiled down to adding hand drawn elements to the line art render&#44; and then manually shading it all). So&#44; I grabbed a 3D model of Voyager&#44; found a good angle&#44; used that as a rough base for a draw over&#44; and then manually colored and shaded it. The results came out pretty good!<br /><br />Read more about this project and how I made this shot here:<br /><br /><a href=\"https://www.patreon.com/posts/38863029\" target='_blank' rel='noopener noreferrer'>https://www.patreon.com/posts/38863029</a>",
+        "restrict": 0,
+        "user": {
+            "id": 19490927,
+            "name": "Aebard Thawne",
+            "account": "aehentai",
+            "profile_image_urls": {
+                "medium": "https://i.pximg.net/user-profile/img/2021/05/07/17/36/01/20660599_57ceddd63fb9bca9c27fc4c28970aca4_170.png"
+            },
+            "is_followed": false,
+            "is_accept_request": false
+        },
+        "tags": [
+            {
+                "name": "Ugoira",
+                "translated_name": "ugoira"
+            },
+            {
+                "name": "Star_Trek",
+                "translated_name": null
+            },
+            {
+                "name": "Voyager",
+                "translated_name": null
+            },
+            {
+                "name": "Star_Trek_Voyager",
+                "translated_name": null
+            },
+            {
+                "name": "Spaceship",
+                "translated_name": null
+            },
+            {
+                "name": "scifi",
+                "translated_name": null
+            }
+        ],
+        "tools": [
+            "AfterEffects",
+            "Krita",
+            "Blender"
+        ],
+        "create_date": "2020-09-14T03:58:59+09:00",
+        "page_count": 1,
+        "width": 560,
+        "height": 315,
+        "sanity_level": 4,
+        "x_restrict": 0,
+        "series": null,
+        "meta_single_page": {
+            "original_image_url": "https://i.pximg.net/img-original/img/2020/09/14/03/58/59/84363507_ugoira0.jpg"
+        },
+        "meta_pages": [],
+        "total_view": 5798,
+        "total_bookmarks": 54,
+        "is_bookmarked": true,
+        "visible": true,
+        "is_muted": false,
+        "seasonal_effect_animation_urls": null,
+        "event_banners": null,
+        "total_comments": 0,
+        "illust_ai_type": 0,
+        "illust_book_style": 0,
+        "request": null,
+        "restriction_attributes": [
+            "restricted_mode"
+        ],
+        "comment_access_control": 0
+    }
+}

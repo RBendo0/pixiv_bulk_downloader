@@ -1,0 +1,148 @@
+{
+    "illust": {
+        "id": 145561384,
+        "title": "『生殖なんて大っ嫌い！』〜前編〜",
+        "type": "manga",
+        "image_urls": {
+            "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p0_square1200.jpg",
+            "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p0_master1200.jpg",
+            "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p0_master1200.jpg"
+        },
+        "caption": "ご覧頂きましてありがとうございます。<br /><br />Kindleの無料先読みはコチラ→<a href=\"https://x.gd/n581N\" target='_blank' rel='noopener noreferrer'>https://x.gd/n581N</a>",
+        "restrict": 0,
+        "user": {
+            "id": 123098679,
+            "name": "クリストフ・クリタ",
+            "account": "user_cshe4344",
+            "profile_image_urls": {
+                "medium": "https://i.pximg.net/user-profile/img/2026/01/17/10/09/40/28404276_8a35767c5a905f2563926384f4f89c9b_170.jpg"
+            },
+            "is_followed": false,
+            "is_accept_request": false
+        },
+        "tags": [
+            {
+                "name": "漫画",
+                "translated_name": "manga"
+            },
+            {
+                "name": "オリキャラ",
+                "translated_name": "original character"
+            },
+            {
+                "name": "レトロ",
+                "translated_name": "retro"
+            },
+            {
+                "name": "宇宙",
+                "translated_name": "universe"
+            },
+            {
+                "name": "宇宙船",
+                "translated_name": "spaceship"
+            },
+            {
+                "name": "惑星",
+                "translated_name": "planet"
+            },
+            {
+                "name": "ギャグ漫画",
+                "translated_name": null
+            },
+            {
+                "name": "プラネット",
+                "translated_name": null
+            },
+            {
+                "name": "ギャグ",
+                "translated_name": "gag"
+            },
+            {
+                "name": "独身",
+                "translated_name": null
+            }
+        ],
+        "tools": [],
+        "create_date": "2026-06-03T19:50:12+09:00",
+        "page_count": 7,
+        "width": 400,
+        "height": 400,
+        "sanity_level": 2,
+        "x_restrict": 0,
+        "series": {
+            "id": 321463,
+            "title": "独身惑星ブルータス"
+        },
+        "meta_single_page": {},
+        "meta_pages": [
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p0_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p0_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p0_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p0.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p1_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p1_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p1_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p1.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p2_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p2_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p2_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p2.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p3_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p3_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p3_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p3.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p4_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p4_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p4_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p4.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p5_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p5_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p5_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p5.jpg"
+                }
+            },
+            {
+                "image_urls": {
+                    "square_medium": "https://i.pximg.net/c/360x360_70/img-master/img/2026/06/03/19/50/12/145561384_p6_square1200.jpg",
+                    "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2026/06/03/19/50/12/145561384_p6_master1200.jpg",
+                    "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2026/06/03/19/50/12/145561384_p6_master1200.jpg",
+                    "original": "https://i.pximg.net/img-original/img/2026/06/03/19/50/12/145561384_p6.jpg"
+                }
+            }
+        ],
+        "total_view": 22,
+        "total_bookmarks": 3,
+        "is_bookmarked": true,
+        "visible": true,
+        "is_muted": false,
+        "seasonal_effect_animation_urls": null,
+        "event_banners": null,
+        "total_comments": 0,
+        "illust_ai_type": 1,
+        "illust_book_style": 3,
+        "request": null,
+        "comment_access_control": 0
+    }
+}
