@@ -114,7 +114,7 @@ class PixivBaseDownloader:
                     fname=UGOIRA_ZIP_FILE.name,
                 )
 
-                # Rileva se è stata richiesta l'interruzione del processo
+                # Rileva se Ã¨ stata richiesta l'interruzione del processo
                 if not is_abort_requested and abort_requested():
                     is_abort_requested = True
 
@@ -132,7 +132,7 @@ class PixivBaseDownloader:
 
                     self.aapi.download(link, path=str(work_dir), fname=fname)
 
-                    # Rileva se è stata richiesta l'interruzione del processo
+                    # Rileva se Ã¨ stata richiesta l'interruzione del processo
                     if not is_abort_requested and abort_requested():
                         print("\n[!]: Richiesta interruzione, attendere completamento download opera.")
                         is_abort_requested = True

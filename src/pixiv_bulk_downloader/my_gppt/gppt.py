@@ -142,7 +142,6 @@ class GetPixivToken:
         # Extract proxy and args from options
         proxy = browser_options["proxy"]
         args = browser_options["args"]
-        headless = browser_options["headless"]
 
 # INIZIO COME ERA 
 #

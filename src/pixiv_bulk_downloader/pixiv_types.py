@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 
 class LoginFailedError(Exception):
@@ -11,20 +11,7 @@ class LoginCred(TypedDict):
     pixiv_id: str
     password: str
 
-
-class IllustInfo(TypedDict):
-    id: int
-    title: str
-    link: str | list[str]
-
-
-class UserInfo(TypedDict):
-    id: int
-    name: str
-    account: str
-    illusts: list[IllustInfo]
-
-
+"""
 class NextBookmarksRequest(TypedDict):
     user_id: str
     restrict: str
@@ -36,3 +23,21 @@ class NextFollowingsRequest(TypedDict):
     user_id: str
     restrict: str
     offset: str
+"""
+
+
+BookmarkMode = Literal[
+    "all",
+    "missing",
+    "chrono",
+]
+
+
+BookmarkPrivacy = Literal[
+    "public",
+    "private",
+]
+
+class BookmarkOptions(TypedDict):
+    mode: BookmarkMode
+    restrict: BookmarkPrivacy

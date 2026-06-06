@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from .base import PixivBaseDownloader
 from .const import BOOKMARKS_DIR
 from .metadata import PixivMetadata
+from .pixiv_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
 from .utils import abort_requested
 
 if TYPE_CHECKING:
@@ -14,15 +15,82 @@ if TYPE_CHECKING:
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
-    def get_all_bookmarked_works(self, mode: str = "all") -> None:
+    def interact(self) -> BookmarkOptions:
+
+        while True:
+
+            print(
+                "\n"
+                "Modalità download\n"
+                "\n"
+                "[1] Scarica tutti i preferiti nell'archivio locale\n"
+                "[2] Scarica solo i preferiti non ancora salvati in locale\n"
+                "[3] Scarica solo i preferiti aggiunti di recente\n"
+            )
+
+            choice = input("Scelta: ").strip()
+
+            mode_map: dict[str, BookmarkMode] = {
+                "1": "all",
+                "2": "missing",
+                "3": "chrono",
+            }
+
+            mode = mode_map.get(choice)
+
+            if mode is not None:
+                break
+
+            print("[!]: Selezione non valida.")
+
+        while True:
+
+            print(
+                "\n"
+                "Visibilità bookmark\n"
+                "\n"
+                "[1] Pubblici\n"
+                "[2] Privati\n"
+            )
+
+            choice = input("Scelta: ").strip()
+
+            privacy_map: dict[str, BookmarkPrivacy] = {
+                "1": "public",
+                "2": "private",
+            }
+
+            restrict = privacy_map.get(choice)
+
+            if restrict is not None:
+                break
+
+            print("[!]: Selezione non valida.")
+
+        return {
+            "mode": mode,
+            "restrict": restrict,
+        }
+
+    def download_bookmarks(self) -> None:
+
+        options = self.interact()
+
         print("[+]: Fetching information of bookmarked works...")
         print("[i]: Premere Q per interrompere il processo.")
-        bookmarked_data = self.retrieve_bookmarks(mode)
+
+        bookmarked_data = self.retrieve_bookmarks(**options)
+
         print("\n[+]: Downloading bookmarked works...")
         print("[i]: Premere Q per interrompere il processo.")
-        self.download(bookmarked_data, BOOKMARKS_DIR)
 
-    def retrieve_bookmarks(self, mode: str = "all") -> list[PixivMetadata]:
+        #self.download(bookmarked_data, BOOKMARKS_DIR)
+
+    def retrieve_bookmarks(
+        self,
+        mode: BookmarkMode = "all",
+        restrict: BookmarkPrivacy = "public",
+    ) -> list[PixivMetadata]:
         is_abort_requested = False
         urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
@@ -42,7 +110,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 local_ids.add(folder.name.split("_")[0])
         
         # Prima inizializzazione della pagina corrente e successiva 
-        res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id)
+        res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id, restrict=restrict)
         next_json: JsonDict | None = res_json
 
         # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
