@@ -155,7 +155,7 @@ class PixivBaseDownloader:
             # E' stata richiesta l'interruzione, esce dal ciclo
             if is_abort_requested:
                 print("\r\033[K[!]: Download interrotto dall'utente.")
-                break    
+                break
             
     def save_index(
         self,
@@ -172,7 +172,7 @@ class PixivBaseDownloader:
         # Crea percorso file indice
         index_file = work_dir / FETCH_CHECKPOINT_FILE
 
-        #salva il record di dati
+        # salva il record di dati
         with open(index_file, "w", encoding="utf-8") as f:
             json.dump(image_data.to_dict(), f)
 
@@ -222,8 +222,8 @@ class PixivBaseDownloader:
         pending = self.rebuild_index(save_path)
 
         if not pending:
-           print("[!]: No pending jobs found.")
-           return
+            print("[!]: No pending jobs found.")
+            return
 
         print(f"[+]: Found {len(pending)} pending jobs.")
         self.download(pending, save_path) 

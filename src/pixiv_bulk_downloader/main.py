@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-#import os
+# import os
 import math
 from collections import Counter
 from pathlib import Path
@@ -16,6 +16,7 @@ from matplotlib.widgets import Slider
 from .bookmarks import PixivBookmarksDownloader
 from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR, PBD_ROOT
 from .my_gppt import PixivAuth
+from .pixiv_path import PixivPath
 from .pixiv_types import LoginFailedError
 from .utils import abort_requested
 
@@ -45,7 +46,7 @@ def interact(
 
     while True:
 
-        #os.system("cls")
+        # os.system("cls")
 
         print(
             "\n"
@@ -72,7 +73,7 @@ def interact(
         if c == "0":
             break
         elif c == "T":
-            #runtest4(aapi)
+            pathtest()
             continue
         
         action = actions.get(c)
@@ -84,6 +85,7 @@ def interact(
         action()
 
         print("[+]: Finish!")
+
 
 # Scarica tutti gli ID
 def runtest4(aapi):
@@ -188,6 +190,7 @@ def runtest4(aapi):
         f"\n[+]: Saved {ids_count} IDs."
     )
 
+
 def runtest3(aapi):
     user_id = aapi.user_id
 
@@ -219,11 +222,13 @@ def runtest3(aapi):
 
     for key, value in detail["profile"].items():
         print(f"{key}: {value}")     
-    
+
+
 def runtest2(aapi) -> None:
     
     for name in dir(aapi):
         print(name)
+
 
 # Rutine di test: eseguire qui tutte le porcate
 def runtest1(aapi) -> None:
@@ -316,6 +321,7 @@ def runtest1(aapi) -> None:
 
     print("[+]: Test completato") 
 
+
 def idminmax() -> None:
 
     ids = [
@@ -332,6 +338,14 @@ def idminmax() -> None:
     print(f"Works : {len(ids)}")
     print(f"IDmin : {min(ids)}")
     print(f"IDmax : {max(ids)}")
+
+
+def pathtest() -> None:
+    bookmarks = PixivPath("D:/TEST")
+
+    print(type(bookmarks))
+    print(bookmarks)
+
 
 def bucks() -> None:
 
@@ -400,13 +414,14 @@ def bucks() -> None:
             ids[6000],
             ID_SPLIT,
         ):
-            dhype = DENSITY_HYPE_SCALE * DENSITY_HYPE_A / (
-                nworks * math.exp((id_test - DENSITY_HYPE_B) / DENSITY_HYPE_A)
-            )            
+        
+        dhype = DENSITY_HYPE_SCALE * DENSITY_HYPE_A / (
+            nworks * math.exp((id_test - DENSITY_HYPE_B) / DENSITY_HYPE_A)
+        )            
 
-            print(
-                f"{id_test} -> {dhype:.1f}"
-            )
+        print(
+            f"{id_test} -> {dhype:.1f}"
+        )
 
     print()
 
@@ -463,14 +478,14 @@ def bucks() -> None:
                 )
             )
 
-            #bucket = int((illust_id - ID_MIN) / (GROUP_SIZE * dhype)
+            # bucket = int((illust_id - ID_MIN) / (GROUP_SIZE * dhype)
             bucket = int(illust_id / (GROUP_SIZE * dhype)
                 
             )
 
         else:
 
-            #bucket = (hype_bucket_count + int((illust_id - ID_SPLIT) / (GROUP_SIZE * DENSITY_STABLE)))
+            # bucket = (hype_bucket_count + int((illust_id - ID_SPLIT) / (GROUP_SIZE * DENSITY_STABLE)))
             bucket = int(illust_id / (GROUP_SIZE * DENSITY_STABLE))
 
         buckets[bucket] += 1
@@ -500,7 +515,7 @@ def bucks() -> None:
 
     print(
         f"Avg works/bucket: "
-        f"{len(ids)/len(buckets):.2f}"
+        f"{len(ids) / len(buckets):.2f}"
     )
 
     print(
@@ -695,6 +710,7 @@ def bucks() -> None:
         f"{stable_max_size}"
     )
 
+
 def graph() -> None:
 
     ids = sorted(
@@ -753,7 +769,7 @@ def graph() -> None:
 
     print(
         f"Delta avg : "
-        f"{sum(y_delta)/len(y_delta):.1f}"
+        f"{sum(y_delta) / len(y_delta):.1f}"
     )
 
     tail20 = y_delta[
@@ -762,7 +778,7 @@ def graph() -> None:
 
     print(
         f"Delta tail avg (20%) : "
-        f"{sum(tail20)/len(tail20):.1f}"
+        f"{sum(tail20) / len(tail20):.1f}"
     )
 
     tail50 = y_delta[
@@ -771,7 +787,7 @@ def graph() -> None:
 
     print(
         f"Delta tail avg (50%) : "
-        f"{sum(tail50)/len(tail50):.1f}"
+        f"{sum(tail50) / len(tail50):.1f}"
     )
 
     tail80 = y_delta[
@@ -780,7 +796,7 @@ def graph() -> None:
 
     print(
         f"Delta tail avg (80%) : "
-        f"{sum(tail80)/len(tail80):.1f}"
+        f"{sum(tail80) / len(tail80):.1f}"
     )
 
     def linear_fit(start_frac):
@@ -1110,6 +1126,7 @@ def _main() -> None:
         interact(aapi, f, b)
     """ 
 
+
 def main() -> None:
     try:
         _main()
@@ -1123,6 +1140,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    #graph()
-    #bucks()
-    
+    # graph()
+    # bucks()
+    # pathtest()
