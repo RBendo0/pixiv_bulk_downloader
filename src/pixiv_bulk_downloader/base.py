@@ -20,6 +20,7 @@ from .const import (
     WORK_METADATA_FILE,
 )
 from .metadata import PixivMetadata
+from .pixiv_path import PixivPath
 from .utils import abort_requested
 
 
@@ -35,37 +36,51 @@ class PixivBaseDownloader:
         self.login_info = login_info
         self.save_dir = save_dir
 
-    # Calcola il GROUP_ID
-    def get_bucket(self, id_: int) -> str:
-        return f"{id_ // self.GROUP_SIZE:06d}"
-
     # Crea una nuova cartella 
-    def create_dir(
+    def work_dir(
         self,
         save_path: Path,
         id_: int,
         title: str | None = None,
-    ) -> Path:
+    ) -> PixivPath:
 
-        bucket = self.get_bucket(id_)
+        w_dir = (
+            PixivPath(save_path)
+            .work_dir(id_, title)
+        )
 
-        folder_name = str(id_)
+        w_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        if title is not None:
-            folder_name += f"_{title}"
+        return w_dir
 
-        work_dir = save_path / bucket / folder_name
+    def fetch_dir(
+        self,
+        save_path: Path,
+        id_: int        
+    ) -> PixivPath:
 
-        work_dir.mkdir(parents=True, exist_ok=True)
+        f_dir = (
+            PixivPath(save_path)
+            .work_dir(id_)
+        )
 
-        return work_dir
+        f_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        return f_dir
 
     @staticmethod
     def rand_sleep(base: float = 0.1, rand: float = 2.5) -> None:
         time.sleep(base + rand * random.random())  # noqa: S311
   
     def download(self, data: list[PixivMetadata], save_path: Path) -> None:
-        save_path.mkdir(parents=True, exist_ok=True)
+        # Ridondante
+        # save_path.mkdir(parents=True, exist_ok=True)
         is_abort_requested = False
         data_len = len(data)
         d_width = len(str(data_len))
@@ -77,7 +92,7 @@ class PixivBaseDownloader:
             )
 
             # Crea la cartella di download
-            work_dir = self.create_dir(save_path, _id_, image_data.path_title)
+            work_dir = self.work_dir(save_path, _id_, image_data.path_title)
 
             # Salva l'intero dump dei metadata
             metadata_file = work_dir / WORK_METADATA_FILE
@@ -138,7 +153,11 @@ class PixivBaseDownloader:
                         is_abort_requested = True
 
             # Elimina eventuale fetch checkpoint
-            fetch_dir = save_path / self.get_bucket(_id_) / str(_id_)
+            fetch_dir = (
+                PixivPath(save_path)
+                .work_dir(_id_)
+            )
+
             if fetch_dir.exists():
                 shutil.rmtree(fetch_dir)
 
@@ -163,11 +182,11 @@ class PixivBaseDownloader:
         save_path: Path,
     ) -> None:
 
-        # Se non esiste, crea cartella capostipite
-        save_path.mkdir(parents=True, exist_ok=True)
+        # Ridondante
+        # save_path.mkdir(parents=True, exist_ok=True)
          
         # Crea la cartella di indicizzazione
-        work_dir = self.create_dir(save_path, image_data.id)
+        work_dir = self.fetch_dir(save_path, image_data.id)
 
         # Crea percorso file indice
         index_file = work_dir / FETCH_CHECKPOINT_FILE
@@ -182,6 +201,8 @@ class PixivBaseDownloader:
     ) -> list[PixivMetadata]:
 
         data: list[PixivMetadata] = []
+
+        found = 0
 
         if not save_path.exists():
             return data
@@ -207,6 +228,14 @@ class PixivBaseDownloader:
 
                     data.append(image_data)
 
+                    found += 1
+
+                    print(
+                        f"\033[K[+]: Pending jobs found: {found}",
+                        end="\r",
+                        flush=True,
+                    )                    
+
                 except Exception as e:
                     print(f"[!]: Failed to load index: {index_file} -> {e}")
 
@@ -226,4 +255,5 @@ class PixivBaseDownloader:
             return
 
         print(f"[+]: Found {len(pending)} pending jobs.")
+        print("[i]: Premere Q per interrompere il processo.")
         self.download(pending, save_path) 

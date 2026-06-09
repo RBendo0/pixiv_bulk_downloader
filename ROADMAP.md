@@ -48,6 +48,11 @@
 * [x] Regressione logaritmica densità HYPE
 * [x] Definizione Bucketing System definitivo
 * [x] Validazione Bucketing System tramite simulazioni (`bucks()`)
+* [x] Introduzione classe `PixivPath` derivata da `pathlib.Path`
+* [x] Implementazione Bucketing System in `PixivPath`
+* [x] Implementazione bucket HYPE/STABLE
+* [x] Implementazione `work_dir()`
+* [x] Validazione generazione percorsi bucket-aware
 
 ---
 
@@ -66,59 +71,55 @@
 * Scartato utilizzo diretto dell'inversa della regressione logaritmica
 * Mantenuta separazione concettuale HYPE/STABLE
 * Bucketing ricostruibile direttamente dall'ID
+* Incapsulamento completo del Bucketing System in `PixivPath`
+* Gestione bucket trasparente ai chiamanti
 
 ---
 
 ## Priorità immediata
 
-### Nuovo Bucketing System
+### Integrazione Bucketing System
 
-* [ ] Implementare nuovo `get_bucket()`
-* [ ] Validare `create_dir()`
-* [ ] Validare `save_index()`
-* [ ] Validare `rebuild_index()`
-* [ ] Validare `resume_pending_jobs()`
-* [ ] Verificare compatibilità con archivi esistenti
+[x] Implementazione Bucketing System in `PixivPath`
+[x] Implementazione HYPE/STABLE bucket calculation
+[x] Implementazione `work_dir()`
+[x] Validazione generazione percorsi bucket-aware
+[x] Sostituzione `create_dir()`
+[x] Eliminazione `get_bucket()`
+[x] Integrazione in `base.py`
 
----
+### Validazione Bucketing System
 
-## Robustezza e gestione errori
+[ ] Test reale fetch bookmark
+[ ] Test reale download immagini
+[ ] Test reale download ugoira
+[ ] Test reale resume fetch
+[ ] Verifica eliminazione checkpoint fetch
+[ ] Verifica ricostruzione indice (`rebuild_index()`)
+[ ] Verifica compatibilità archivi esistenti
+[ ] Verifica creazione automatica bucket HYPE
+[ ] Verifica creazione automatica bucket STABLE
 
-* [ ] Passare al setaccio tutta la gestione delle eccezioni
-* [ ] Uniformare i messaggi di errore
-* [ ] Individuare eccezioni non intercettate
-* [ ] Verificare cleanup e rollback in caso di errore
-* [ ] Verificare gestione errori filesystem
+### Robustezza
 
----
+[ ] Revisione completa gestione eccezioni
+[ ] Uniformazione messaggi di errore
+[ ] Individuazione eccezioni non intercettate
+[ ] Verifica rollback e cleanup filesystem
 
-## Gestione limitazioni Pixiv
+### Rate Limit Pixiv
 
-* [ ] Gestire l'interruzione causata dai rate limit Pixiv
-* [ ] Salvare automaticamente lo stato in caso di limitazione
-* [ ] Consentire resume dopo limitazione
-* [ ] Distinguere errori temporanei da errori permanenti
-* [ ] Migliorare riconoscimento risposte API anomale
+[ ] Gestire interruzione causata dai rate limit
+[ ] Salvare automaticamente lo stato
+[ ] Consentire resume dopo limitazione
+[ ] Distinguere errori temporanei da permanenti
 
----
+### Menu e funzionalità
 
-## Menu e funzionalità
-
-* [ ] Rifattorizzazione menu principale
-* [ ] Completare menu conversione privacy bookmark
-* [ ] Implementare `convert_bookmarks_to_private()`
-* [ ] Aggiungere menu ricerca thumbnail
-* [ ] Implementare logica ricerca thumbnail
-
----
-
-## Validazione pratica
-
-* [ ] Test reale download immagini
-* [ ] Test reale download ugoira
-* [ ] Test reale resume fetch
-* [ ] Test reale resume download
-* [ ] Test compatibilità nuovo Bucketing System
+[ ] Completare menu conversione privacy bookmark
+[ ] Implementare `convert_bookmarks_to_private()`
+[ ] Aggiungere menu ricerca thumbnail
+[ ] Implementare logica ricerca thumbnail
 
 ---
 
@@ -157,7 +158,7 @@ THREAD RELEASE
 
 ## Priorità operative attuali
 
-1. Nuovo Bucketing System
+1. Integrazione Bucketing System nel downloader
 2. Gestione rate limit Pixiv
 3. Revisione completa delle eccezioni
 4. Completamento menu

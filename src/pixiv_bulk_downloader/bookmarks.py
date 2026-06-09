@@ -84,7 +84,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         print("\n[+]: Downloading bookmarked works...")
         print("[i]: Premere Q per interrompere il processo.")
 
-        #self.download(bookmarked_data, BOOKMARKS_DIR)
+        self.download(bookmarked_data, BOOKMARKS_DIR)
 
     def retrieve_bookmarks(
         self,
