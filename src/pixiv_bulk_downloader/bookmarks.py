@@ -113,6 +113,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id, restrict=restrict)
         next_json: JsonDict | None = res_json
 
+        # DEBUG
+        # print(type(res_json))
+        # print(res_json.keys())        
+        # print(res_json)        
+        
         # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
         is_chrono_last_missing_page = False
 
