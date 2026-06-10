@@ -29,6 +29,7 @@
 * [x] Checkpoint `fetch.json`
 * [x] Resume infrastrutturale
 * [x] Ripristino lavori tramite `resume_pending_jobs()`
+* [x] Ricostruzione indice tramite `rebuild_index()`
 
 ### Download
 
@@ -36,6 +37,8 @@
 * [x] Download ugoira
 * [x] Interruzione fetch tramite `Q`
 * [x] Interruzione download tramite `Q`
+* [x] Conservazione checkpoint in caso di download fallito
+* [x] Conservazione cartelle parziali in caso di download fallito
 
 ### Bookmark
 
@@ -80,46 +83,53 @@
 
 ### Integrazione Bucketing System
 
-[x] Implementazione Bucketing System in `PixivPath`
-[x] Implementazione HYPE/STABLE bucket calculation
-[x] Implementazione `work_dir()`
-[x] Validazione generazione percorsi bucket-aware
-[x] Sostituzione `create_dir()`
-[x] Eliminazione `get_bucket()`
-[x] Integrazione in `base.py`
+* [x] Implementazione Bucketing System in `PixivPath`
+* [x] Implementazione HYPE/STABLE bucket calculation
+* [x] Implementazione `work_dir()`
+* [x] Validazione generazione percorsi bucket-aware
+* [x] Sostituzione `create_dir()`
+* [x] Eliminazione `get_bucket()`
+* [x] Integrazione in `base.py`
 
 ### Validazione Bucketing System
 
-[ ] Test reale fetch bookmark
-[ ] Test reale download immagini
-[ ] Test reale download ugoira
-[ ] Test reale resume fetch
-[ ] Verifica eliminazione checkpoint fetch
-[ ] Verifica ricostruzione indice (`rebuild_index()`)
-[ ] Verifica compatibilità archivi esistenti
-[ ] Verifica creazione automatica bucket HYPE
-[ ] Verifica creazione automatica bucket STABLE
+* [x] Test reale fetch bookmark
+* [x] Test reale download immagini
+* [x] Test reale download ugoira
+* [x] Test reale resume fetch
+* [x] Verifica eliminazione checkpoint fetch
+* [x] Verifica ricostruzione indice (`rebuild_index()`)
+* [ ] Verifica compatibilità archivi esistenti
+* [x] Verifica creazione automatica bucket HYPE
+* [x] Verifica creazione automatica bucket STABLE
 
 ### Robustezza
 
-[ ] Revisione completa gestione eccezioni
-[ ] Uniformazione messaggi di errore
-[ ] Individuazione eccezioni non intercettate
-[ ] Verifica rollback e cleanup filesystem
+* [ ] Revisione completa gestione eccezioni
+* [x] Download resiliente agli errori
+* [ ] Gestione errori `retrieve_bookmarks()`
+* [ ] Definire comportamento in caso di errore API durante il fetch
+* [ ] Uniformazione messaggi di errore
+* [ ] Individuazione eccezioni non intercettate
+* [ ] Revisione gestione eccezioni globale (`main`)
+* [ ] Verifica rollback e cleanup filesystem
 
 ### Rate Limit Pixiv
 
-[ ] Gestire interruzione causata dai rate limit
-[ ] Salvare automaticamente lo stato
-[ ] Consentire resume dopo limitazione
-[ ] Distinguere errori temporanei da permanenti
+* [ ] Determinare comportamento reale del rate limit
+* [ ] Verificare se PixivPy3 genera `PixivError`
+* [ ] Verificare eventuali risposte JSON inattese
+* [ ] Gestire interruzione causata dai rate limit
+* [ ] Salvare automaticamente lo stato
+* [ ] Consentire resume dopo limitazione
+* [ ] Distinguere errori temporanei da permanenti
 
 ### Menu e funzionalità
 
-[ ] Completare menu conversione privacy bookmark
-[ ] Implementare `convert_bookmarks_to_private()`
-[ ] Aggiungere menu ricerca thumbnail
-[ ] Implementare logica ricerca thumbnail
+* [ ] Completare menu conversione privacy bookmark
+* [ ] Implementare `convert_bookmarks_to_private()`
+* [ ] Aggiungere menu ricerca thumbnail
+* [ ] Implementare logica ricerca thumbnail
 
 ---
 
@@ -141,6 +151,7 @@
 * [ ] Progress bar avanzata
 * [ ] Retry automatico download falliti
 * [ ] Verifica integrità download
+* [ ] Validazione Bucketing System oltre dataset storico (`ID_MAX`)
 
 ---
 
@@ -158,9 +169,30 @@ THREAD RELEASE
 
 ## Priorità operative attuali
 
-1. Integrazione Bucketing System nel downloader
-2. Gestione rate limit Pixiv
-3. Revisione completa delle eccezioni
-4. Completamento menu
-5. Validazione resume e ugoira
+1. Gestione errori `retrieve_bookmarks()`
+2. Revisione gestione eccezioni globale (`main`)
+3. Gestione rate limit Pixiv
+4. Completamento menu privacy bookmark
+5. Thumbnail search
 6. ThreadPoolExecutor
+
+---
+
+## Note progettuali
+
+### Gestione eccezioni
+
+* `main()` deve rimanere una rete di sicurezza globale.
+* La logica di interpretazione degli errori deve essere il più possibile vicina alle chiamate API.
+* `retrieve_bookmarks()` è attualmente il principale punto da irrobustire.
+* Un errore API durante `retrieve_bookmarks()` termina l'esecuzione del programma.
+
+### Domanda aperta
+
+Definire il comportamento corretto quando una chiamata Pixiv API fallisce durante `retrieve_bookmarks()`:
+
+* Tornare al menu?
+* Terminare il programma?
+* Consentire il resume?
+* Effettuare retry automatici?
+* Distinguere errori temporanei da permanenti?
