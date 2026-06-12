@@ -106,6 +106,7 @@
 ### Robustezza
 
 * [ ] Revisione completa gestione eccezioni
+* [x] Introduzione infrastruttura eccezioni personalizzate (`pixiv_errors.py`)
 * [x] Download resiliente agli errori
 * [ ] Gestione errori `retrieve_bookmarks()`
 * [ ] Definire comportamento in caso di errore API durante il fetch
@@ -180,6 +181,11 @@ THREAD RELEASE
 
 ## Note progettuali
 
+* Introdotte:
+    * PixivDownloaderError
+    * PixivApiError
+    * StorageError
+
 ### Gestione eccezioni
 
 * `main()` deve rimanere una rete di sicurezza globale.
@@ -196,3 +202,4 @@ Definire il comportamento corretto quando una chiamata Pixiv API fallisce durant
 * Consentire il resume?
 * Effettuare retry automatici?
 * Distinguere errori temporanei da permanenti?
+

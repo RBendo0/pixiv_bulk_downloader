@@ -126,6 +126,8 @@ class PixivBaseDownloader:
                             default=str,
                         )
 
+                    print("\033[K" + UGOIRA_ZIP_FILE.name, end="\r")
+
                     zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
 
                     self.aapi.download(
@@ -157,14 +159,14 @@ class PixivBaseDownloader:
                             print("\n[!]: Richiesta interruzione, attendere completamento download opera.")
                             is_abort_requested = True
 
+                print("\033[K\033[A\033[K", end="", flush=True)
+
             except Exception as e:
 
                 print(
-                    f"\n[!]: Download failed: {_id_} -> {type(e).__name__}: {e}"
-                )
-
-                print(
-                    "[i]: Checkpoint preserved for future resume."
+                    f"\r\033[K[!]: Download failed: {_id_} "
+                    f"-> {type(e).__name__}: {e} "
+                    f"(checkpoint preserved)"
                 )
 
                 download_ok = False
@@ -187,8 +189,6 @@ class PixivBaseDownloader:
             except Exception as e:
                 print(f"[!]: Bookmark privacy update failed: {_id_} -> {e}")
             """
-            
-            print("\033[K\033[A\033[K", end="", flush=True)
 
             # E' stata richiesta l'interruzione, esce dal ciclo
             if is_abort_requested:
@@ -257,7 +257,10 @@ class PixivBaseDownloader:
                     )                    
 
                 except Exception as e:
-                    print(f"[!]: Failed to load index: {index_file} -> {e}")
+                    print(
+                        f"[!]: Failed to load index: {index_file} "
+                        f"-> {type(e).__name__}: {e}"
+                    )
 
         data.sort(key=lambda x: x.id)
 
