@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import random
 import shutil
-import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -74,10 +72,6 @@ class PixivBaseDownloader:
 
         return f_dir
 
-    @staticmethod
-    def rand_sleep(base: float = 0.1, rand: float = 2.5) -> None:
-        time.sleep(base + rand * random.random())  # noqa: S311
-  
     def download(self, data: list[PixivMetadata], save_path: Path) -> None:
         # Ridondante
         # save_path.mkdir(parents=True, exist_ok=True)

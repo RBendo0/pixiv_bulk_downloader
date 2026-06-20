@@ -7,11 +7,25 @@ from typing import TYPE_CHECKING, Any
 from .base import PixivBaseDownloader
 from .const import BOOKMARKS_DIR
 from .metadata import PixivMetadata
+from .pixiv_errors import (
+    PixivApiError,
+    RateLimitError,
+    is_rate_limited,
+    prompt_error_menu,
+    wait_rate_limit,
+)
 from .pixiv_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
+from .timing import (
+    PIXIV_API_DELAY_MIN,
+    random_api_delay,
+)
+from .ui import ui
 from .utils import abort_requested
 
 if TYPE_CHECKING:
     from pixivpy3.utils import JsonDict
+
+import random
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
@@ -76,7 +90,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         options = self.interact()
 
-        print("[+]: Fetching information of bookmarked works...")
+        print("\n[+]: Fetching information of bookmarked works...")
         print("[i]: Premere Q per interrompere il processo.")
 
         bookmarked_data = self.retrieve_bookmarks(**options)
@@ -91,16 +105,37 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
     ) -> list[PixivMetadata]:
+        is_fatal_abort = False
         is_abort_requested = False
         urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
         target_id = self.login_info["response"]["user"]["id"]
-        total = self.aapi.user_detail(self.aapi.user_id)["profile"][
-            "total_illust_bookmarks_public"
-        ]
+
+        try:
+
+            # Numero di opere totali
+            total = self.aapi.user_detail(self.aapi.user_id)["profile"][
+                "total_illust_bookmarks_public"
+            ]
+
+            # Prima inizializzazione della pagina corrente e successiva 
+            res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id, restrict=restrict)
+            next_json: JsonDict | None = res_json
+
+        except Exception as e:
+
+            print(
+                f"[!]: API call failed: "
+                f"{type(e).__name__}: {e}"
+            )
+
+            return []
+
         d_width = len(str(total))
         urls_len = 0
-
+        page_number = 0
+        paging_fault: Exception | None = None
+        
         # Lista ID già scaricati
         local_ids: set[str] = set()
 
@@ -108,33 +143,125 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if mode in ("missing", "chrono"):
             for folder in BOOKMARKS_DIR.rglob("*_*"):
                 local_ids.add(folder.name.split("_")[0])
-        
-        # Prima inizializzazione della pagina corrente e successiva 
-        res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id, restrict=restrict)
-        next_json: JsonDict | None = res_json
 
-        # DEBUG
-        # print(type(res_json))
-        # print(res_json.keys())        
-        # print(res_json)        
-        
         # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
         is_chrono_last_missing_page = False
 
         while next_qs is not None:
 
             # E' stata richiesta l'interruzione, esce dal ciclo
-            if is_abort_requested:
+            if is_fatal_abort or is_abort_requested:
                 break
 
+            page_number += 1
+            paging_fault = None 
+
+            # Aggiorna la pagina successiva
+            if page_number > 1 and next_json is not None:
+                res_json = next_json
+
+            # ASSERT DISABILITATA
+            #
+            # In teoria next_json non dovrebbe mai essere None
+            # all'interno del ciclo while, perché:
+            #
+            # - viene inizializzata con res_json
+            # - viene impostata a None solo quando next_qs diventa None
+            # - in quel caso il ciclo termina
+            #
+            # Se questa assunzione si rivelasse falsa in futuro,
+            # rivalutare la logica di paginazione.
+            #
+            # assert next_json is not None
+
             # Passa alla pagina successiva  
-            assert next_json is not None
-            next_qs = self.aapi.parse_qs(next_json["next_url"])
+            next_qs = None if next_json is None else self.aapi.parse_qs(next_json.get("next_url")) 
+
             if next_qs is None:
                 # Raggiunta l'ultima pagina dell'intero set di bookmarks
                 next_json = None
             else:
-                next_json = self.aapi.user_bookmarks_illust(**next_qs)
+                try:
+
+                    next_json = self.aapi.user_bookmarks_illust(**next_qs)
+
+                except Exception as e:
+
+                    paging_fault = e
+
+            # Verifica la validità del responso da Pixiv
+            try:
+
+                test_case = random.randint(1, 10)
+
+                if test_case == 1:
+                    # raise StorageError("Storage test")
+                    pass
+
+                elif test_case == 2:
+                    raise PixivApiError("Pixiv API test")
+
+                elif test_case == 3:
+                    raise RateLimitError("Rate limit test")
+                
+                if paging_fault:
+                    raise PixivApiError(
+                        f"{type(paging_fault).__name__}: "
+                        f"{paging_fault}"
+                    )                
+
+                if is_rate_limited(res_json):
+                    raise RateLimitError(
+                        "Pixiv API rate limit reached"
+                    )
+
+            except RateLimitError as e:
+
+                print(
+                    "\n"
+                    f"[!]: {e} | "
+                    f"Page: {page_number} | "
+                    f"Last artwork: "
+                    f"{urls[-1].id if urls else 'N/A'}"
+                )
+
+                if not wait_rate_limit():
+
+                    is_fatal_abort = True
+                    continue
+
+                page_number -= 1
+
+                continue
+
+            except PixivApiError as e:
+
+                print(
+                    "\n"
+                    f"[!]: API call failed: {e} | "
+                    f"Page: {page_number} | "
+                    f"Last artwork: "
+                    f"{urls[-1].id if urls else 'N/A'}"
+                )
+
+                action = prompt_error_menu(
+                    {
+                        "A": "Abort",
+                        "R": "Retry",
+                    },
+                    default_action="R",
+                    timeout=10,
+                )
+
+                if action == "A":
+
+                    is_fatal_abort = True
+
+                else:
+
+                    page_number -= 1
+
+                continue
 
             # Modalità Chrono, primo ID pagina corrente presente in locale, termina
             if mode == "chrono":
@@ -165,22 +292,63 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         flush=True,
                     )
                     continue
-                image_data: PixivMetadata = PixivMetadata(illust)               
-                urls.append(image_data)
-                self.save_index(image_data, BOOKMARKS_DIR)
-                print(
-                    f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d) [Indexed]"
-                    % (urls_len + idx + 1, total, illust.title, illust.id),
-                    end="\r",
-                    flush=True,
-                )
 
-            # Aggiorna la pagina successiva
-            if next_json is not None:
-                res_json = next_json
+                while True:
+
+                    try:
+
+                        image_data: PixivMetadata = PixivMetadata(illust)
+                        self.save_index(image_data, BOOKMARKS_DIR)
+                        urls.append(image_data)
+
+                        print(
+                            f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d) [Indexed]"
+                            % (
+                                urls_len + idx + 1,
+                                total,
+                                illust.title,
+                                illust.id,
+                            ),
+                            end="\r",
+                            flush=True,
+                        )
+
+                        break
+
+                    except Exception as e:
+
+                        print(
+                            "\n"
+                            f"[!]: Artwork processing failed: "
+                            f"{illust.id} -> "
+                            f"{type(e).__name__}: {e}"
+                        )
+
+                        action = prompt_error_menu(
+                            {
+                                "A": "Abort",
+                                "R": "Retry",
+                                "C": "Continue",
+                            },
+                            default_action="C",
+                        )
+
+                        if action == "A":
+                            is_fatal_abort = True
+                            break
+
+                        if action == "C":
+                            break
+
+                        if action == "R":
+                            continue
+
+                # Interruzione a seguito di errore fatale
+                if is_fatal_abort:
+                    break
 
             urls_len = len(urls)
-            self.rand_sleep(0.5)
+            random_api_delay(PIXIV_API_DELAY_MIN)
         return urls
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
@@ -223,7 +391,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 errors += 1
                 print(f"[!]: Error adding {illust_id}: {e}")
 
-            self.rand_sleep(0.5)
+            random_api_delay(PIXIV_API_DELAY_MIN)
 
         print()
         print(f"[+]: Added bookmarks : {added}")

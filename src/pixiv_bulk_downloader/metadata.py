@@ -4,7 +4,7 @@ import re
 
 from pixivpy3.utils import JsonDict
 
-#if TYPE_CHECKING:
+# if TYPE_CHECKING:
 #    from pixivpy3.utils import JsonDict
 
 

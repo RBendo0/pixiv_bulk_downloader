@@ -68,20 +68,22 @@ class PixivAuth:
             print("\x1b[?25l[+]: Login...")
             login_info = aapi.auth(refresh_token=ref)
         elif login_cred is None or cnt > 0:
-#           print("[+]: ID is mail address, username, or account name.")
-#           stdin_login = (
-#                pwinput.pwinput(prompt="[?]: ID: ", mask=" "),
-#                pwinput.pwinput(prompt="[?]: PW: ", mask=" "),
-#                input("[?]: ID: "),
-#                input("[?]: PW: "),
-#           )
+            # print("[+]: ID is mail address, username, or account name.")
+            # stdin_login = (
+            #     pwinput.pwinput(prompt="[?]: ID: ", mask=" "),
+            #     pwinput.pwinput(prompt="[?]: PW: ", mask=" "),
+            #     input("[?]: ID: "),
+            #     input("[?]: PW: "),
+            # )
             print("\x1b[?25l[+]: Login...", end="\r")
-#           ref = self.get_refresh_token(stdin_login[0], stdin_login[1])
+            # ref = self.get_refresh_token(stdin_login[0], stdin_login[1])
             ref = self.get_refresh_token("", "")
             login_info = aapi.auth(refresh_token=ref)
             print("\033[K[+]: Login...OK!\x1b[?25h")
         else:
             raise PixivLoginFailedError
+
+        # print("\x1b[?25h", end="")
 
         return (aapi, login_info)
 
