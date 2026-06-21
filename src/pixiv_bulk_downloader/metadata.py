@@ -40,12 +40,16 @@ class PixivMetadata:
     @property
     def path_title(self) -> str:
 
-        return re.sub(
+        title = re.sub(
             r'[\\/:*?"<>|]',
             "_",
             self.title,
         )
-    
+
+        # Windows non consente nomi che terminano
+        # con spazi o punti.
+        return title.rstrip(" .")    
+
     @property
     def type(self) -> str:
         return self._data["type"]

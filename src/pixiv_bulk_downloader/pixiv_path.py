@@ -3,6 +3,7 @@ from pathlib import Path
 
 _BasePath = type(Path())
 
+
 class PixivPath(_BasePath):
 
     _GROUP_SIZE = 500

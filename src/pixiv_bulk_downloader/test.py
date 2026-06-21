@@ -1133,23 +1133,19 @@ def runtest7():
 
 def runtest8():
 
-    ui.menu(
-        "Test Menu",
-        {
-            "Y": "Yes",
-            "N": "No",
+    ui.line("Prima del menu")
+
+    choice = ui.menu(
+        title="Menu temporaneo",
+        options={
+            "1": "Opzione uno",
+            "2": "Opzione due",
+            "3": "Opzione tre",
         },
-        block=False,
+        footer="[Q] Esci",
+        clear=True,
     )
 
-    choice = ui.input_key(
-        "Continue [Y/N]:",
-        valid="YNyn",
-        block=True,
-    )
+    ui.line(f"Scelta effettuata: {choice}")
 
-    ui.clear()
-
-    ui.message(
-        f"Selected: {choice}"
-    )
+    ui.line("Dopo il menu")

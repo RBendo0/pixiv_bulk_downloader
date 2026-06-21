@@ -21,9 +21,7 @@ def interact(
 
     while True:
 
-        # os.system("cls")
-
-        ui.menu(
+        choice = ui.main_menu(
             title="Pixiv Bulk Downloader",
             options={
                 "1": "Scarica i preferiti sull'archivio locale",
@@ -31,47 +29,32 @@ def interact(
                 "3": "Aggiungi preferiti da una lista di url",
                 "4": "Cambia profilo di privacy ai preferiti",
                 "0": "Esci",
-                "T": "Test",
             },
-            footer="CTRL+C = Interrompe esecuzione",
+            footer="[T]: Debugger - [CTRL+C]: Termina",
             top_margin=4,
-        )        
-
-        c = ui.input_key(
             prompt=(
                 "[?] Inserire il carattere "
                 "corrispondente alla scelta desiderata:"
             ),
-            valid="01234T",
-        )
+            validate="01234T",
+        )        
 
-        if c == "0":
+        if choice == "0":
             break
-        elif c == "T":
+        elif choice == "T":
             # inserire in questa riga eventuali routine di test
             continue
         
-        action = actions[c]
+        action = actions[choice]
         action()
 
-        ui.message("[+]: Finish!")
+        ui.line("[+]: Finish!")
 
 
 def _main() -> None:
     aapi, login_info = PixivAuth().auth()
     b = PixivBookmarksDownloader(aapi, login_info, PBD_ROOT)
     interact(b)
-    
-    """
-    # Esecuzione diretta senza interazione, per test rapidi
-    if "-y" in sys.argv:
-        f.get_all_following_works()
-        print("\033[K[+]: Finish!")
-        b.get_all_bookmarked_works()
-        print("\033[K[+]: Finish!")
-    else:
-        interact(aapi, f, b)
-    """ 
 
 
 def main() -> None:
@@ -81,7 +64,7 @@ def main() -> None:
 
     except (KeyError, LoginFailedError):
 
-        ui.message(
+        ui.line(
             "[!]: Request limit seem to be exceeded. "
             "Try again later.",
             ui.COLOR_ERROR,
@@ -89,7 +72,7 @@ def main() -> None:
 
     except KeyboardInterrupt:
 
-        ui.message(
+        ui.line(
             "[!]: SIGINT",
             ui.COLOR_ERROR,
         )

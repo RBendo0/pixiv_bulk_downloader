@@ -73,6 +73,10 @@ class PixivBaseDownloader:
         return f_dir
 
     def download(self, data: list[PixivMetadata], save_path: Path) -> None:
+                
+        print("\n[+]: Downloading bookmarked works...")
+        print("[i]: Premere Q per interrompere il processo.")
+                
         # Ridondante
         # save_path.mkdir(parents=True, exist_ok=True)
         is_abort_requested = False

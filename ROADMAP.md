@@ -2,20 +2,37 @@
 
 ## Priorità 1 - Completamento UI
 
-### Test e validazione
+### Completato
+
+- Implementata ui.line()
+- Eliminata ui.message()
+- Implementato supporto:
+  - history
+  - home
+  - clear
+  - colori
+- Implementato sistema pending
+- Integrato winsound.MessageBeep()
+- Integrato menu()
+- Integrato main_menu()
+- Implementata cancellazione menu tramite clear=True
+- Completata migrazione main.py
+- Completata migrazione interact() in bookmarks.py
+
+### Da completare
+
+- Migrare prompt_error_menu()
+- Migrare wait_rate_limit()
+- Migrare retrieve_bookmarks()
+- Migrare base.py
+- Eliminare output legacy residui
+
+### Test
 
 - Verificare menu temporanei
-- Verificare messaggi temporanei
-- Verificare input_key()
-- Verificare clear(keep)
+- Verificare countdown rate limit
 - Verificare gestione CTRL+C
 - Individuare e correggere bug UI residui
-
-### Migrazione
-
-- Migrare bookmarks.py verso ui.message()
-- Migrare base.py verso ui.message()
-- Eliminare output legacy residui
 
 ---
 

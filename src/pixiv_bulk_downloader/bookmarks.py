@@ -20,7 +20,6 @@ from .timing import (
     random_api_delay,
 )
 from .ui import ui
-from .utils import abort_requested
 
 if TYPE_CHECKING:
     from pixivpy3.utils import JsonDict
@@ -31,55 +30,37 @@ import random
 class PixivBookmarksDownloader(PixivBaseDownloader):
     def interact(self) -> BookmarkOptions:
 
-        while True:
+        mode_map: dict[str, BookmarkMode] = {
+            "1": "all",
+            "2": "missing",
+            "3": "chrono",
+        }
 
-            print(
-                "\n"
-                "Modalità download\n"
-                "\n"
-                "[1] Scarica tutti i preferiti nell'archivio locale\n"
-                "[2] Scarica solo i preferiti non ancora salvati in locale\n"
-                "[3] Scarica solo i preferiti aggiunti di recente\n"
+        privacy_map: dict[str, BookmarkPrivacy] = {
+            "1": "public",
+            "2": "private",
+        }
+
+        mode = mode_map[
+            ui.menu(
+                title="Modalità download",
+                options={
+                    "1": "Scarica tutti i preferiti nell'archivio locale",
+                    "2": "Scarica solo i preferiti non ancora salvati in locale",
+                    "3": "Scarica solo i preferiti aggiunti di recente",
+                },
             )
+        ]
 
-            choice = input("Scelta: ").strip()
-
-            mode_map: dict[str, BookmarkMode] = {
-                "1": "all",
-                "2": "missing",
-                "3": "chrono",
-            }
-
-            mode = mode_map.get(choice)
-
-            if mode is not None:
-                break
-
-            print("[!]: Selezione non valida.")
-
-        while True:
-
-            print(
-                "\n"
-                "Visibilità bookmark\n"
-                "\n"
-                "[1] Pubblici\n"
-                "[2] Privati\n"
+        restrict = privacy_map[
+            ui.menu(
+                title="Visibilità bookmark",
+                options={
+                    "1": "Pubblici",
+                    "2": "Privati",
+                },
             )
-
-            choice = input("Scelta: ").strip()
-
-            privacy_map: dict[str, BookmarkPrivacy] = {
-                "1": "public",
-                "2": "private",
-            }
-
-            restrict = privacy_map.get(choice)
-
-            if restrict is not None:
-                break
-
-            print("[!]: Selezione non valida.")
+        ]
 
         return {
             "mode": mode,
@@ -88,16 +69,13 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
     def download_bookmarks(self) -> None:
 
+        # Rileva opzioni utente
         options = self.interact()
 
-        print("\n[+]: Fetching information of bookmarked works...")
-        print("[i]: Premere Q per interrompere il processo.")
-
+        # Scansiona e crea la lista di opere
         bookmarked_data = self.retrieve_bookmarks(**options)
 
-        print("\n[+]: Downloading bookmarked works...")
-        print("[i]: Premere Q per interrompere il processo.")
-
+        # Scarica le opere
         self.download(bookmarked_data, BOOKMARKS_DIR)
 
     def retrieve_bookmarks(
@@ -105,8 +83,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
     ) -> list[PixivMetadata]:
-        is_fatal_abort = False
-        is_abort_requested = False
         urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
         target_id = self.login_info["response"]["user"]["id"]
@@ -124,9 +100,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         except Exception as e:
 
-            print(
+            ui.line(
                 f"[!]: API call failed: "
-                f"{type(e).__name__}: {e}"
+                f"{type(e).__name__}: {e}",
+                ui.COLOR_ERROR,
             )
 
             return []
@@ -147,10 +124,24 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
         is_chrono_last_missing_page = False
 
+        is_fatal_abort = False
+
+        # Imposta interruzione da utente
+        ui.set_pending(
+            "abort",
+            "Premere Q per interrompere il processo.",
+            "Qq",
+        )
+
+        # Stampe informative
+        ui.line("")
+        ui.line("[+]: Fetching information of bookmarked works...")
+        ui.line("[i]: " + ui.pending_prompt("abort"))
+
         while next_qs is not None:
 
             # E' stata richiesta l'interruzione, esce dal ciclo
-            if is_fatal_abort or is_abort_requested:
+            if is_fatal_abort or ui.requested("abort"):
                 break
 
             page_number += 1
@@ -217,12 +208,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             except RateLimitError as e:
 
-                print(
-                    "\n"
+                ui.line(
                     f"[!]: {e} | "
                     f"Page: {page_number} | "
                     f"Last artwork: "
-                    f"{urls[-1].id if urls else 'N/A'}"
+                    f"{urls[-1].id if urls else 'N/A'}",
+                    ui.COLOR_ERROR,
                 )
 
                 if not wait_rate_limit():
@@ -236,12 +227,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             except PixivApiError as e:
 
-                print(
-                    "\n"
+                ui.line(
                     f"[!]: API call failed: {e} | "
                     f"Page: {page_number} | "
                     f"Last artwork: "
-                    f"{urls[-1].id if urls else 'N/A'}"
+                    f"{urls[-1].id if urls else 'N/A'}",
+                    ui.COLOR_ERROR,
                 )
 
                 action = prompt_error_menu(
@@ -279,9 +270,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             for idx, illust in enumerate(res_json["illusts"]):
 
                 # Rileva se è stata richiesta l'interruzione del processo
-                if not is_abort_requested and abort_requested():
+                if ui.requested("abort"):
                     print("\n[!]: Richiesta interruzione, attendere completamento pagina corrente.")
-                    is_abort_requested = True
 
                 # Modalità Missing o Chrono ultima pagina, se l'ID corrente è presente in locale, salta il ciclo
                 if (mode == "missing" or is_chrono_last_missing_page) and str(illust.id) in local_ids:
