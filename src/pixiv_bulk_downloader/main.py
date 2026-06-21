@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-# import os
-# from typing import TYPE_CHECKING
 from .bookmarks import PixivBookmarksDownloader
 from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR, PBD_ROOT
 from .my_gppt import PixivAuth
 from .pixiv_types import LoginFailedError
-from .test import runtest7
+from .test import runtest8
 from .ui import ui
-
-# if TYPE_CHECKING:
-#     from pixivpy3.aapi import AppPixivAPI
 
 
 def interact(
@@ -108,4 +103,4 @@ if __name__ == "__main__":
     # graph()
     # bucks()
     # pathtest()
-    runtest7()
+    runtest8()

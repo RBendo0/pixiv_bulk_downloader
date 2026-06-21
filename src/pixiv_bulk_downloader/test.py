@@ -14,6 +14,7 @@ from matplotlib.widgets import Slider
 from rich.console import Console
 
 from .pixiv_path import PixivPath
+from .ui import ui
 from .utils import abort_requested
 
 
@@ -1128,3 +1129,27 @@ def runtest7():
     c = pwinput.getch()
 
     print(f"\nDEBUG: {repr(c)}")
+
+
+def runtest8():
+
+    ui.menu(
+        "Test Menu",
+        {
+            "Y": "Yes",
+            "N": "No",
+        },
+        block=False,
+    )
+
+    choice = ui.input_key(
+        "Continue [Y/N]:",
+        valid="YNyn",
+        block=True,
+    )
+
+    ui.clear()
+
+    ui.message(
+        f"Selected: {choice}"
+    )
