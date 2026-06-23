@@ -28,7 +28,7 @@ import random
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
-    def interact(self) -> BookmarkOptions:
+    def interact(self) -> BookmarkOptions | None:
 
         mode_map: dict[str, BookmarkMode] = {
             "1": "all",
@@ -41,36 +41,51 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             "2": "private",
         }
 
-        mode = mode_map[
-            ui.menu(
-                title="Modalità download",
-                options={
-                    "1": "Scarica tutti i preferiti nell'archivio locale",
-                    "2": "Scarica solo i preferiti non ancora salvati in locale",
-                    "3": "Scarica solo i preferiti aggiunti di recente",
-                },
-            )
-        ]
+        ui.menu(
+            title="Modalità download",
+            options={
+                "1": "Scarica tutti i preferiti nell'archivio locale",
+                "2": "Scarica solo i preferiti non ancora salvati in locale",
+                "3": "Scarica solo i preferiti aggiunti di recente",
+            },
+        )
 
-        restrict = privacy_map[
-            ui.menu(
-                title="Visibilità bookmark",
-                options={
-                    "1": "Pubblici",
-                    "2": "Privati",
-                },
-            )
-        ]
+        c1 = ui.input_key(
+            prompt="[?] Scegliere ([0] per Menu principale)",
+            valid="0123",
+        )
+
+        if c1 == "0":
+            return None
+
+        ui.menu(
+            title="Visibilità bookmark",
+            options={
+                "1": "Pubblici",
+                "2": "Privati",
+            },
+        )
+
+        c2 = ui.input_key(
+            prompt="[?] Scegliere ([0] per Menu principale)",
+            valid="012",
+        )
+
+        if c2 == "0":
+            return None
 
         return {
-            "mode": mode,
-            "restrict": restrict,
+            "mode": mode_map[c1],
+            "restrict": privacy_map[c2],
         }
 
     def download_bookmarks(self) -> None:
 
         # Rileva opzioni utente
-        options = self.interact()
+        options: BookmarkOptions | None = self.interact()
+
+        if not options: 
+            return
 
         # Scansiona e crea la lista di opere
         bookmarked_data = self.retrieve_bookmarks(**options)

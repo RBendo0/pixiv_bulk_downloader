@@ -1133,19 +1133,22 @@ def runtest7():
 
 def runtest8():
 
-    ui.line("Prima del menu")
+    print("\n=== TEST 1 - Input normale ===\n")
 
-    choice = ui.menu(
-        title="Menu temporaneo",
-        options={
-            "1": "Opzione uno",
-            "2": "Opzione due",
-            "3": "Opzione tre",
-        },
-        footer="[Q] Esci",
-        clear=True,
+    result = ui.input_key(
+        prompt="Scelta:",
+        valid="ABC",
     )
 
-    ui.line(f"Scelta effettuata: {choice}")
+    print(f"Risultato: {result}")
 
-    ui.line("Dopo il menu")
+    print("\n=== TEST 2 - Timeout ===\n")
+
+    result = ui.input_key(
+        prompt="Scelta:",
+        valid="ABC",
+        default="B",
+        timeout=10,
+    )
+
+    print(f"Risultato: {result}")

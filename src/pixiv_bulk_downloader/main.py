@@ -21,7 +21,7 @@ def interact(
 
     while True:
 
-        choice = ui.main_menu(
+        ui.menu(
             title="Pixiv Bulk Downloader",
             options={
                 "1": "Scarica i preferiti sull'archivio locale",
@@ -31,13 +31,18 @@ def interact(
                 "0": "Esci",
             },
             footer="[T]: Debugger - [CTRL+C]: Termina",
+            frame=True,
             top_margin=4,
+        )
+
+        choice = ui.input_key(
             prompt=(
-                "[?] Inserire il carattere "
-                "corrispondente alla scelta desiderata:"
+                "[?] Effettuare la scelta desiderata"
             ),
-            validate="01234T",
+            valid="01234T",
         )        
+
+        ui.line()
 
         if choice == "0":
             break
@@ -45,9 +50,8 @@ def interact(
             # inserire in questa riga eventuali routine di test
             continue
         
-        action = actions[choice]
-        action()
-
+        actions[choice]()
+        
         ui.line("[+]: Finish!")
 
 

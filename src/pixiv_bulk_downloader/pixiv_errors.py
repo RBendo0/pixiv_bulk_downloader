@@ -5,6 +5,7 @@ from .timing import (
     MENU_TIMEOUT,
     RATE_LIMIT_WAIT,
 )
+from .ui import ui
 
 
 class PixivDownloaderError(Exception):
@@ -35,107 +36,26 @@ class StorageError(PixivDownloaderError):
 
 
 def prompt_error_menu(
-    actions: dict[str, str],
-    default_action: str | None = None,
+    options: dict[str, str],
+    valid: str,
+    default: str = "",
     timeout: int = MENU_TIMEOUT,
 ) -> str:
 
-    valid_actions = {
-        key.upper(): value
-        for key, value in actions.items()
-    }
+    menu_lines = ui.menu(
+        title="",
+        options=options,
+    )
 
-    if default_action is not None:
+    choice = ui.input_key(
+        valid=valid,
+        default=default,
+        timeout=timeout,
+    )
 
-        default_action = default_action.upper()
+    ui.clear_lines(menu_lines + 1)
 
-        if default_action not in valid_actions:
-            raise ValueError(
-                f"Invalid default action: {default_action}"
-            )
-
-    menu_lines = len(valid_actions) + 1    # ... + 1 ?
-
-    for key, label in valid_actions.items():
-        print(f"[{key}] {label}")
-
-    # Nessuna scelta automatica
-    if default_action is None:
-
-        while True:
-
-            choice = (
-                input("Choice: ")
-                .strip()
-                .upper()
-            )
-
-            if choice in valid_actions:
-
-                for _ in range(menu_lines):
-                    print("\033[A\033[K", end="")
-
-                return choice
-
-            print("[!]: Invalid selection.")
-
-    # Scelta automatica abilitata
-    selected_action = None
-
-    print()
-
-    for remaining in range(
-        timeout,
-        0,
-        -1,
-    ):
-
-        print(
-            f"\rAuto {valid_actions[default_action]} "
-            f"in {remaining}s",
-            end="",
-            flush=True,
-        )
-
-        start = time.time()
-
-        while (
-            time.time() - start
-            < 1.0
-        ):
-
-            if msvcrt.kbhit():
-
-                key = (
-                    msvcrt.getch()
-                    .decode(
-                        "utf-8",
-                        errors="ignore",
-                    )
-                    .upper()
-                )
-
-                if key in valid_actions:
-
-                    selected_action = key
-                    break
-
-            time.sleep(0.05)
-
-        if selected_action is not None:
-            break
-
-    if selected_action is None:
-        selected_action = default_action
-
-    # Cancella countdown
-    print("\r\033[K", end="")
-
-    # Cancella menu
-    for _ in range(menu_lines):
-        print("\033[A\033[K", end="")
-
-    return selected_action
+    return choice
 
 
 def is_rate_limited(page) -> bool:
