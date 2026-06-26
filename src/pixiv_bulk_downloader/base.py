@@ -74,7 +74,6 @@ class PixivBaseDownloader:
 
     def download(self, data: list[PixivMetadata], save_path: Path) -> None:
                 
-        print("\n[+]: Downloading bookmarked works...")
         print("[i]: Premere Q per interrompere il processo.")
                 
         # Ridondante

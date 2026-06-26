@@ -1,4 +1,3 @@
-import msvcrt
 import time
 
 from .timing import (
@@ -45,6 +44,7 @@ def prompt_error_menu(
     menu_lines = ui.menu(
         title="",
         options=options,
+        top_margin=1,
     )
 
     choice = ui.input_key(
@@ -75,7 +75,7 @@ def wait_rate_limit(
     seconds: int = RATE_LIMIT_WAIT,
 ) -> bool:
 
-    print()
+    ui.line()
 
     for remaining in range(
         seconds,
@@ -83,12 +83,11 @@ def wait_rate_limit(
         -1,
     ):
 
-        print(
-            f"\r[!]: Access limited. "
+        ui.line(
+            f"[!]: Access limited. "
             f"Retry in {remaining}s "
             f"[A] Abort",
-            end="",
-            flush=True,
+            history=False, 
         )
 
         start = time.time()
@@ -98,24 +97,16 @@ def wait_rate_limit(
             < 1.0
         ):
 
-            if msvcrt.kbhit():
+            key = ui.poll_key("A")
 
-                key = (
-                    msvcrt.getch()
-                    .decode(
-                        "utf-8",
-                        errors="ignore",
-                    )
-                    .upper()
-                )
-
-                if key == "A":
-
-                    print("\r\033[K", end="")
-                    return False
+            if key == "A":
+    
+                ui.clear_lines(0)
+    
+                return False
 
             time.sleep(0.05)
 
-    print("\r\033[K", end="")
+    ui.clear_lines(0)
 
     return True

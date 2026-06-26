@@ -19,12 +19,12 @@ from .timing import (
     PIXIV_API_DELAY_MIN,
     random_api_delay,
 )
-from .ui import ui
+from .ui import InputPending, ui
 
 if TYPE_CHECKING:
     from pixivpy3.utils import JsonDict
 
-import random
+# import random
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
@@ -87,8 +87,36 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if not options: 
             return
 
+        ui.line()
+        ui.line("[+]: Fetching information of bookmarked works...")
+
+        choice = ui.input_key(
+            prompt="[?] Continue (Y/N)",
+            valid="YN",
+            default="Y",
+        )
+
+        ui.clear_lines(1)
+
+        if choice == "N":
+            return
+
         # Scansiona e crea la lista di opere
         bookmarked_data = self.retrieve_bookmarks(**options)
+
+        ui.line()
+        ui.line("[+]: Downloading bookmarked works...")
+
+        choice = ui.input_key(
+            prompt="[?] Continue (Y/N)",
+            valid="YN",
+            default="Y",
+        )
+
+        ui.clear_lines(1)
+
+        if choice == "N":
+            return
 
         # Scarica le opere
         self.download(bookmarked_data, BOOKMARKS_DIR)
@@ -139,24 +167,19 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
         is_chrono_last_missing_page = False
 
-        is_fatal_abort = False
-
         # Imposta interruzione da utente
-        ui.set_pending(
-            "abort",
-            "Premere Q per interrompere il processo.",
-            "Qq",
+        user_abort = InputPending(
+            valid="Qq",
+            prompt="Press Q to interrupt the process."
         )
 
         # Stampe informative
-        ui.line("")
-        ui.line("[+]: Fetching information of bookmarked works...")
-        ui.line("[i]: " + ui.pending_prompt("abort"))
+        ui.line("[i]: " + user_abort.prompt)
 
         while next_qs is not None:
 
             # E' stata richiesta l'interruzione, esce dal ciclo
-            if is_fatal_abort or ui.requested("abort"):
+            if user_abort.is_requested:
                 break
 
             page_number += 1
@@ -197,7 +220,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             # Verifica la validità del responso da Pixiv
             try:
-
+                """
                 test_case = random.randint(1, 10)
 
                 if test_case == 1:
@@ -209,7 +232,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 elif test_case == 3:
                     raise RateLimitError("Rate limit test")
-                
+                """
                 if paging_fault:
                     raise PixivApiError(
                         f"{type(paging_fault).__name__}: "
@@ -228,14 +251,21 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     f"Page: {page_number} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
-                    ui.COLOR_ERROR,
+                    ui.COLOR_WARNING,
                 )
 
                 if not wait_rate_limit():
+ 
+                    ui.line(
+                        "[!]: Operation interrupted by user.",
+                    )
 
-                    is_fatal_abort = True
-                    continue
+                    break
 
+                ui.line(
+                    "[i]: Access limited by the service. Retrying in a moment."
+                )                    
+                
                 page_number -= 1
 
                 continue
@@ -255,29 +285,36 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         "A": "Abort",
                         "R": "Retry",
                     },
-                    default_action="R",
-                    timeout=10,
+                    valid="AR",
+                    default="R",
                 )
 
                 if action == "A":
 
-                    is_fatal_abort = True
+                    ui.line(
+                        "[!]: Operation interrupted by user.",
+                    )
 
-                else:
+                    break
 
-                    page_number -= 1
+                ui.line(
+                    "[i]: Operation resumed."
+                )                    
+
+                page_number -= 1
 
                 continue
 
             # Modalità Chrono, primo ID pagina corrente presente in locale, termina
             if mode == "chrono":
                 if str(res_json["illusts"][0].id) in local_ids:
-                    print(
-                        "\033[K[-]: Last chrono page reached.",
-                        end="\n",
-                        flush=True,
+
+                    ui.line(
+                        "[-]: Last chrono page reached."
                     )
+
                     break
+
                 # Rileva se e è l'ultima pagina da scaricare (solo modalità chrono)
                 if next_json is not None:
                     is_chrono_last_missing_page = (str(next_json["illusts"][0].id) in local_ids)
@@ -285,18 +322,28 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             for idx, illust in enumerate(res_json["illusts"]):
 
                 # Rileva se è stata richiesta l'interruzione del processo
-                if ui.requested("abort"):
-                    print("\n[!]: Richiesta interruzione, attendere completamento pagina corrente.")
+                if user_abort.is_requested and not user_abort.is_notified:
+                    
+                    ui.line(
+                        "[!]: Operation interrupted. "
+                        "Waiting for the current page to complete.",
+                    )
+
+                    user_abort.set_notified()
 
                 # Modalità Missing o Chrono ultima pagina, se l'ID corrente è presente in locale, salta il ciclo
                 if (mode == "missing" or is_chrono_last_missing_page) and str(illust.id) in local_ids:
-                    print(
-                        "\033[K[-]: Already downloaded: %s (id: %d)"
-                        % (illust.title, illust.id),
-                        end="\r",
-                        flush=True,
-                    )
+
+                    ui.line(
+                        f"[-]: Already downloaded: "
+                        f"{illust.title} "
+                        f"(id: {illust.id})",
+                        history=False,
+                    )                    
+                                        
                     continue
+                
+                is_fatal_abort = False
 
                 while True:
 
@@ -306,28 +353,26 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         self.save_index(image_data, BOOKMARKS_DIR)
                         urls.append(image_data)
 
-                        print(
-                            f"\033[K[+]: [%0{d_width}d/%0{d_width}d]: %s (id: %d) [Indexed]"
-                            % (
-                                urls_len + idx + 1,
-                                total,
-                                illust.title,
-                                illust.id,
-                            ),
-                            end="\r",
-                            flush=True,
+                        ui.line(
+                            f"[+]: "
+                            f"[{urls_len + idx + 1:0{d_width}d}/"
+                            f"{total:0{d_width}d}]: "
+                            f"{illust.title} "
+                            f"(id: {illust.id}) [Indexed]",
+                            history=False,
                         )
 
                         break
 
                     except Exception as e:
 
-                        print(
-                            "\n"
-                            f"[!]: Artwork processing failed: "
-                            f"{illust.id} -> "
-                            f"{type(e).__name__}: {e}"
-                        )
+                        ui.line(
+                            f" [!]: Failed: "
+                            f"{type(e).__name__}: {e}",
+                            ui.COLOR_ERROR,
+                            home=False,
+                            clear=False,
+                        )                        
 
                         action = prompt_error_menu(
                             {
@@ -335,17 +380,27 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 "R": "Retry",
                                 "C": "Continue",
                             },
-                            default_action="C",
+                            valid="ARC",
+                            default="C",
                         )
 
                         if action == "A":
+
+                            ui.line(
+                                "[!]: Operation interrupted by user."
+                            )
+
                             is_fatal_abort = True
+
                             break
 
                         if action == "C":
                             break
 
                         if action == "R":
+                            
+                            ui.clear_lines(1)
+
                             continue
 
                 # Interruzione a seguito di errore fatale
@@ -354,10 +409,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             urls_len = len(urls)
             random_api_delay(PIXIV_API_DELAY_MIN)
+
         return urls
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
     def add_list_to_bookmarks(self, file_path: Path) -> None:
+
+        ui.line()
+        ui.line("[+]: Adding bookmarks from URL list...")
 
         lines = file_path.read_text(encoding="utf-8").splitlines()
 
@@ -375,13 +434,22 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             match = re.search(r"artworks/(\d+)", url)
 
             if not match:
+                
                 skipped += 1
-                print(f"[!]: Invalid URL: {url}")
+                
+                ui.line(
+                    f"[!]: Invalid URL: {url}",
+                    ui.COLOR_ERROR,
+                )
+                
                 continue
 
             illust_id = int(match.group(1))
 
-            print(f"[+]: Adding bookmark: {illust_id}")
+            ui.line(
+                f"[+]: Adding bookmark: {illust_id}",
+                history=False,
+            )
 
             try:
 
@@ -389,19 +457,38 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     illust_id,
                     restrict="private",
                 )
+                
                 added += 1
 
             except Exception as e:
 
                 errors += 1
-                print(f"[!]: Error adding {illust_id}: {e}")
+                
+                ui.line(
+                    f" [!]: Error: {type(e).__name__}: {e}",
+                    ui.COLOR_ERROR,
+                    home=False,
+                    clear=False,
+                )
 
             random_api_delay(PIXIV_API_DELAY_MIN)
 
-        print()
-        print(f"[+]: Added bookmarks : {added}")
-        print(f"[-]: Skipped URLs    : {skipped}")
-        print(f"[!]: Errors          : {errors}")
+        ui.line()
+
+        ui.line(
+            f"[+]: Added bookmarks .. : {added}",
+            ui.COLOR_SUCCESS,
+        )
+
+        ui.line(
+            f"[-]: Skipped URLs ..... : {skipped}",
+            ui.COLOR_WARNING if skipped else ui.COLOR_SUCCESS,
+        )
+
+        ui.line(
+            f"[!]: Errors ........... : {errors}",
+            ui.COLOR_ERROR if errors else ui.COLOR_SUCCESS,
+        )
 
     def convert_bookmarks_to_private(self) -> None:
         pass

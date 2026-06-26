@@ -3,8 +3,8 @@ import time
 
 # UI
 
-MENU_TIMEOUT = 5
-RATE_LIMIT_WAIT = 5
+MENU_TIMEOUT = 10        # = 10
+RATE_LIMIT_WAIT = 60     # = 60
 
 # Pixiv API
 

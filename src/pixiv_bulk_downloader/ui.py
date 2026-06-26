@@ -1,28 +1,28 @@
 import msvcrt
 import time
+import weakref
 import winsound
+from dataclasses import dataclass
 
 import pwinput
 
 
 class UI:
 
-    COLOR_DEFAULT = "\033[37m"
-    COLOR_WARNING = "\033[33m"
-    COLOR_ERROR = "\033[31m"
+    COLOR_DEFAULT = "\033[37m"    # bianco
+    COLOR_SUCCESS = "\033[32m"    # verde
+    COLOR_WARNING = "\033[33m"    # giallo
+    COLOR_ERROR = "\033[31m"      # rosso
 
-    COLOR_RESET = "\033[0m"
-
-    def __init__(self):
-        self._pending: dict[str, dict] = {}
+    COLOR_RESET = "\033[0m"       # nero
 
     def line(
         self,
         text: str = "",
         color: str = COLOR_DEFAULT,
         *,
-        home: bool = False,
-        clear: bool = False,
+        home: bool = True,
+        clear: bool = True,
         history: bool = True,
     ) -> None:
 
@@ -102,7 +102,7 @@ class UI:
 
     def clear_lines(
         self,
-        lines: int,
+        lines: int = 0,
     ) -> None:
 
         print("\r\033[K", end="", flush=True)
@@ -128,8 +128,6 @@ class UI:
 
                 self.line(
                     prompt + ": ",
-                    home=True,
-                    clear=True,
                     history=False,
                 )
 
@@ -150,6 +148,8 @@ class UI:
                 self.line(
                     "[!]: Invalid selection.",
                     self.COLOR_ERROR,
+                    home=False,
+                    clear=False,
                     history=False,
                 )
 
@@ -166,8 +166,6 @@ class UI:
 
                 self.line(
                     prompt + f" (Default [{default}] tra {remaining}s): ",
-                    home=True,
-                    clear=True,
                     history=False,
                 )
 
@@ -192,6 +190,8 @@ class UI:
                         self.line(
                             "[!]: Invalid selection.",
                             self.COLOR_ERROR,
+                            home=False,
+                            clear=False,
                             history=False,
                         )
 
@@ -231,20 +231,23 @@ class UI:
 
         return ""
 
-    def set_pending(
-        self,
-        name: str,
-        prompt: str,
-        input: str,
-    ) -> None:
 
-        self._pending[name] = {
-            "prompt": prompt,
-            "input": input,
-            "state": False,
-        }
+@dataclass(eq=False)
+class InputPending:
 
-    def _listen_pending(self) -> None:
+    _instances = weakref.WeakSet()
+
+    valid: str
+    prompt: str = ""
+    requested: bool = False
+    notified: bool = False
+
+    def __post_init__(self):
+
+        InputPending._instances.add(self)
+
+    @classmethod
+    def _listen(cls) -> None:
 
         while msvcrt.kbhit():
 
@@ -256,37 +259,32 @@ class UI:
                 print()
                 raise KeyboardInterrupt
 
-            for pending in self._pending.values():
+            for pending in cls._instances:
 
-                if key in pending["input"]:
+                if key in pending.valid:
 
-                    pending["state"] = True
+                    pending.requested = True
 
-    def requested(
-        self,
-        name: str,
-    ) -> bool:
+    @property
+    def is_requested(self) -> bool:
 
-        self._listen_pending()
+        self._listen()
 
-        pending = self._pending.get(name)
+        return self.requested
 
-        if pending is None:
-            return False
+    @property
+    def is_notified(self) -> bool:
 
-        return pending["state"]
-    
-    def pending_prompt(
-        self,
-        name: str,
-    ) -> str:
+        return self.notified
 
-        pending = self._pending.get(name)
+    def set_notified(self) -> None:
 
-        if pending is None:
-            return ""
+        self.notified = True
 
-        return pending["prompt"]    
+    def reset(self) -> None:
+
+        self.requested = False
+        self.notified = False
 
 
 # Istanza comune della classe di interfaccia grafica
