@@ -88,35 +88,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if not options: 
             return
 
-        ui.line()
-        ui.line("[+]: Fetching information of bookmarked works...")
-
-        choice = ui.input_key(
-            prompt="[?] Continue (Y/N)",
-            valid="YN",
-            default="Y",
-        )
-
-        ui.clear_lines(1)
-
-        if choice == "N":
-            return
-
         # Scansiona e crea la lista di opere
         bookmarked_data = self.retrieve_bookmarks(**options)
 
-        ui.line()
-        ui.line("[+]: Downloading bookmarked works...")
-
-        choice = ui.input_key(
-            prompt="[?] Continue (Y/N)",
-            valid="YN",
-            default="Y",
-        )
-
-        ui.clear_lines(1)
-
-        if choice == "N":
+        if not bookmarked_data:
             return
 
         # Scarica le opere
@@ -126,10 +101,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         self,
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
-    ) -> list[PixivMetadata]:
+    ) -> list[PixivMetadata] | None:
+
         urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
         target_id = self.login_info["response"]["user"]["id"]
+
+        ui.line()
+        ui.line("[+]: Fetching information of bookmarked works...")
+        
+        # Chiede conferma a procedere
+        if not ui.confirm():
+            return
 
         try:
 

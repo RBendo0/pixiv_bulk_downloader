@@ -210,10 +210,30 @@ class UI:
 
             return default
 
+    def confirm(self) -> bool:
+
+        choice = ui.input_key(
+            prompt="[?] Continue (Y/N)",
+            valid="YN",
+            default="Y",
+        )
+
+        ui.clear_lines(1)
+
+        return choice == "Y"
+
     def poll_key(
         self,
         valid: str = "",
     ) -> str:
+        
+        # poll_key() e InputPending condividono il medesimo buffer
+        # di input della console. I caratteri consumati e non validi
+        # vengono deliberatamente scartati e non sono soggetti a
+        # buffering o reiniezione.
+        #
+        # Questa scelta privilegia semplicità e prevedibilità del
+        # modello rispetto alla conservazione dell'input.
 
         if not msvcrt.kbhit():
             return ""
@@ -234,6 +254,14 @@ class UI:
 
 @dataclass(eq=False)
 class InputPending:
+
+    # poll_key() e InputPending condividono il medesimo buffer
+    # di input della console. I caratteri consumati e non validi
+    # vengono deliberatamente scartati e non sono soggetti a
+    # buffering o reiniezione.
+    #
+    # Questa scelta privilegia semplicità e prevedibilità del
+    # modello rispetto alla conservazione dell'input.
 
     _instances = weakref.WeakSet()
 

@@ -78,6 +78,13 @@ class PixivBaseDownloader:
 
     def download(self, data: list[PixivMetadata], save_path: Path) -> None:
                 
+        ui.line()
+        ui.line("[+]: Downloading pending works...")
+
+        # Chiede conferma a procedere
+        if not ui.confirm():
+            return
+
         # Imposta interruzione da utente
         user_abort = InputPending(
             valid="Q",
@@ -392,33 +399,44 @@ class PixivBaseDownloader:
 
                     found += 1
 
-                    print(
-                        f"\033[K[+]: Pending jobs found: {found}",
-                        end="\r",
-                        flush=True,
-                    )                    
+                    ui.line(
+                        f"[+]: Pending jobs found: {found}",
+                        history=False,
+                    )
 
                 except Exception as e:
-                    print(
-                        f"[!]: Failed to load index: {index_file} "
-                        f"-> {type(e).__name__}: {e}"
+
+                    ui.line(
+                        f"[!]: Failed to load index: {index_file}: "
+                        f"{type(e).__name__}: {e}",
+                        ui.COLOR_ERROR,
                     )
 
         data.sort(key=lambda x: x.id)
 
         return data
-
+    
     def resume_pending_jobs(
         self,
         save_path: Path,
     ) -> None:
-        print("[+]: Rebuilding pending jobs index...")
+
+        ui.line("[+]: Rebuilding pending jobs index...")
+
         pending = self.rebuild_index(save_path)
 
         if not pending:
-            print("[!]: No pending jobs found.")
+            ui.line(
+                "[!]: No pending jobs found.",
+                ui.COLOR_WARNING,
+            )
             return
 
-        print(f"[+]: Found {len(pending)} pending jobs.")
-        print("[i]: Premere Q per interrompere il processo.")
-        self.download(pending, save_path) 
+        ui.line(
+            f"[+]: Found {len(pending)} pending jobs."
+        )
+
+        self.download(
+            pending,
+            save_path,
+        )

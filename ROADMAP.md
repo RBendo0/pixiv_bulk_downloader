@@ -1,110 +1,94 @@
 # Pixiv Bulk Downloader - Roadmap
 
-## Priorità 1 - Stabilizzazione UI
+## Stato attuale
 
-### Completare
+Completato il porting del sottosistema UI e della gestione errori nelle routine principali.
 
-* Migrare `base.py`
-* Eliminare output legacy residui (`print`)
-* Verificare tutti gli usi specializzati di `ui.line()`
-* Audit completo dei messaggi temporanei
-* Verificare uniformità di menu e prompt
-* Eseguire test end-to-end della nuova UI
-* Individuare e correggere bug UI residui
+La CLI usa ora in modo coerente:
 
-### Test
+- `ui.line()`
+- `ui.menu()`
+- `ui.input_key()`
+- `ui.confirm()`
+- `ui.poll_key()`
+- `InputPending`
 
-* Menu temporanei
-* Countdown rate limit
-* Gestione CTRL+C
-* `InputPending`
-* Gestione delle righe temporanee
+Sono stati completati:
 
----
-
-## Priorità 2 - Gestione errori
-
-### Audit
-
-* Mappare operazioni filesystem in `download()`
-* Mappare punti di download
-* Individuare eccezioni non intercettate
-* Classificare i punti di recovery
-
-### Refactoring `pixiv_errors.py`
-
-* Introdurre gestione polimorfica degli errori tramite metodi virtuali
-* Centralizzare:
-
-  * menu di errore;
-  * azioni consentite;
-  * azione di default;
-  * messaggi di resume/interruzione;
-  * logica `Abort / Retry / Continue`
-* Ridurre il codice duplicato nei moduli chiamanti
-* Valutare eventuale macchina a stati per i flussi di recovery
-
-### Classificazione errori
-
-* Fatal
-* Abort / Retry
-* Abort / Retry / Continue
-* Rate Limit
+- download interattivo dei pending jobs;
+- resume dei pending jobs;
+- rebuild index;
+- gestione rate limit;
+- preservazione checkpoint;
+- gestione errori con menu Abort / Retry / Continue;
+- distinzione tra righe di progresso e storico console.
 
 ---
 
-## Priorità 3 - Test
+## Priorità 1 - Refactoring `pixiv_errors.py`
 
-### Simulazioni
+Obiettivo: trasformare `pixiv_errors.py` nel centro della politica di recovery.
 
-* PixivApiError
-* StorageError
-* Errori filesystem
-* Rate limit
+### Da progettare
 
-### Compatibilità archivi
+- Gerarchia definitiva degli errori.
+- Metodi virtuali per la gestione degli errori.
+- Centralizzazione dei menu di recovery.
+- Centralizzazione dei messaggi utente.
+- Centralizzazione della logica:
+  - Abort;
+  - Retry;
+  - Continue;
+  - Rate limit wait;
+  - Resume;
+  - Checkpoint preservation.
+- Riduzione della duplicazione in `base.py` e `bookmarks.py`.
+- Valutazione di una piccola macchina a stati per i flussi di recovery.
 
-* Archivi pre-bucketing
-* Archivi bucket legacy
-* Archivi correnti
+### Classi / concetti da valutare
+
+- `PixivDownloaderError`
+- `PixivApiError`
+- `RateLimitError`
+- `DownloadRateLimitError`
+- `StorageError`
+- `ContinueShortcut`
+- `RecoveryAction`
+- `RecoveryPolicy`
 
 ---
 
-## Priorità 4 - Funzionalità mancanti
+## Priorità 2 - Refactoring del download
 
-* Bookmark Privacy
-* Thumbnail Search
+Obiettivo: preparare `download()` al futuro Thread Pool System senza introdurre ancora concorrenza.
+
+### Da fare
+
+- Separare meglio le fasi logiche:
+  - preparazione opera;
+  - metadata ugoira;
+  - serializzazione metadata;
+  - download file;
+  - completamento opera;
+  - gestione checkpoint.
+- Ridurre i blocchi `try/except` duplicati.
+- Delegare a `pixiv_errors.py` la scelta della recovery.
+- Rendere più esplicito il concetto di pending job.
+- Chiarire la semantica di opera completa / opera incompleta.
 
 ---
 
-## Priorità 5 - Thread Release
+## Priorità 3 - Thread Pool System
 
-* ThreadPoolExecutor
-* Download paralleli
-* Resume thread-safe
-* Abort thread-safe
+Il TPS verrà implementato solo nella fase di download.
 
-# ROADMAP
+`retrieve_bookmarks()` rimane seriale, perché i test hanno mostrato che il fetch API è già sufficientemente veloce.
 
-## Gestione errori e resilienza
+Architettura confermata:
 
-- [x] Porting completo del sottosistema UI in `base.py`
-- [x] Introduzione di `DownloadRateLimitError`
-- [x] Normalizzazione di `RemoteDisconnected`
-- [x] Gestione del rate limit nei download con retry e possibilità di interruzione
-- [x] Introduzione di `ContinueShortcut` per il controllo del flusso
-- [x] Separazione della gestione errori tra:
-  - metadata opera
-  - metadata ugoira
-  - download dei singoli file
-- [x] Preservazione automatica dei checkpoint in caso di download incompleto
-
-## Da completare
-
-- [ ] Rifinire le routine rimanenti di `base.py`
-- [ ] Porting UI di `rebuild_index()` e `resume_pending_jobs()`
-- [ ] Rifattorizzare la gestione errori tramite metodi virtuali
-- [ ] Progettare l'architettura del Thread Pool System (TPS)
-- [ ] Definire il coordinamento dei worker in presenza di `DownloadRateLimitError`
-- [ ] Definire il modello di completamento di un'opera nel TPS
-- [ ] Rivalutare l'architettura fetch/download dopo i test sul TPS
+```text
+retrieve completo
+    ↓
+lista pending jobs
+    ↓
+download completo
