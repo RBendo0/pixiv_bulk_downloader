@@ -1,10 +1,25 @@
 import time
+from collections.abc import Callable
+from http.client import RemoteDisconnected
+from typing import ParamSpec, TypeVar
 
 from .timing import (
     MENU_TIMEOUT,
     RATE_LIMIT_WAIT,
 )
 from .ui import ui
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+class ContinueShortcut(Exception):
+    """
+    Eccezione di controllo del flusso utilizzata per
+    interrompere l'elaborazione dell'opera corrente e
+    passare direttamente a quella successiva.
+    """
+    pass
 
 
 class PixivDownloaderError(Exception):
@@ -23,6 +38,14 @@ class PixivApiError(PixivDownloaderError):
 
 
 class RateLimitError(PixivApiError):
+    pass
+
+
+class ApiRateLimitError(RateLimitError):
+    pass
+
+
+class DownloadRateLimitError(RateLimitError):
     pass
 
 
@@ -110,3 +133,36 @@ def wait_rate_limit(
     ui.clear_lines(0)
 
     return True
+
+
+def is_remote_disconnected(exc: BaseException) -> bool:
+
+    current: BaseException | None = exc
+
+    while current is not None:
+
+        if isinstance(current, RemoteDisconnected):
+            return True
+
+        current = current.__cause__ or current.__context__
+
+    return False
+
+
+def call_download_api(
+    func: Callable[P, R],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> R:
+
+    try:
+        return func(*args, **kwargs)
+
+    except Exception as e:
+
+        if is_remote_disconnected(e):
+            raise DownloadRateLimitError(
+                "Remote server closed connection during download"
+            ) from e
+
+        raise

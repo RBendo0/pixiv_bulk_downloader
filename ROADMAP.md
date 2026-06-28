@@ -83,3 +83,28 @@
 * Download paralleli
 * Resume thread-safe
 * Abort thread-safe
+
+# ROADMAP
+
+## Gestione errori e resilienza
+
+- [x] Porting completo del sottosistema UI in `base.py`
+- [x] Introduzione di `DownloadRateLimitError`
+- [x] Normalizzazione di `RemoteDisconnected`
+- [x] Gestione del rate limit nei download con retry e possibilità di interruzione
+- [x] Introduzione di `ContinueShortcut` per il controllo del flusso
+- [x] Separazione della gestione errori tra:
+  - metadata opera
+  - metadata ugoira
+  - download dei singoli file
+- [x] Preservazione automatica dei checkpoint in caso di download incompleto
+
+## Da completare
+
+- [ ] Rifinire le routine rimanenti di `base.py`
+- [ ] Porting UI di `rebuild_index()` e `resume_pending_jobs()`
+- [ ] Rifattorizzare la gestione errori tramite metodi virtuali
+- [ ] Progettare l'architettura del Thread Pool System (TPS)
+- [ ] Definire il coordinamento dei worker in presenza di `DownloadRateLimitError`
+- [ ] Definire il modello di completamento di un'opera nel TPS
+- [ ] Rivalutare l'architettura fetch/download dopo i test sul TPS

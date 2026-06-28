@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
+    
     def interact(self) -> BookmarkOptions | None:
 
         mode_map: dict[str, BookmarkMode] = {
@@ -169,7 +170,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         # Imposta interruzione da utente
         user_abort = InputPending(
-            valid="Qq",
+            valid="Q",
             prompt="Press Q to interrupt the process."
         )
 
@@ -207,8 +208,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             next_qs = None if next_json is None else self.aapi.parse_qs(next_json.get("next_url")) 
 
             if next_qs is None:
+
                 # Raggiunta l'ultima pagina dell'intero set di bookmarks
                 next_json = None
+
             else:
                 try:
 
@@ -343,8 +346,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                         
                     continue
                 
-                is_fatal_abort = False
-
                 while True:
 
                     try:
@@ -367,7 +368,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     except Exception as e:
 
                         ui.line(
-                            f" [!]: Failed: "
+                            " | ",
+                            home=False,
+                            clear=False,
+                            history=False,
+                        )
+
+                        ui.line(
+                            f"[!]: Failed: "
                             f"{type(e).__name__}: {e}",
                             ui.COLOR_ERROR,
                             home=False,
@@ -390,10 +398,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 "[!]: Operation interrupted by user."
                             )
 
-                            is_fatal_abort = True
-
-                            break
-
+                            # Ritorna al processo chiamante
+                            return urls
+                    
                         if action == "C":
                             break
 
@@ -402,10 +409,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                             ui.clear_lines(1)
 
                             continue
-
-                # Interruzione a seguito di errore fatale
-                if is_fatal_abort:
-                    break
 
             urls_len = len(urls)
             random_api_delay(PIXIV_API_DELAY_MIN)
