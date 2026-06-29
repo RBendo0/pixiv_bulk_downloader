@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Any
 from .base import PixivBaseDownloader
 from .const import BOOKMARKS_DIR
 from .metadata import PixivMetadata
-from .pixiv_errors import (
+from .errors import (
     PixivApiError,
     RateLimitError,
     is_rate_limited,
     prompt_error_menu,
     wait_rate_limit,
 )
-from .pixiv_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
+from .pbd_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
 from .timing import (
     PIXIV_API_DELAY_MIN,
     random_api_delay,

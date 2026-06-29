@@ -1,94 +1,48 @@
-# Pixiv Bulk Downloader - Roadmap
+# ROADMAP – Pixiv Bulk Downloader
 
-## Stato attuale
+## 1. ERRS – Error Recovery System
 
-Completato il porting del sottosistema UI e della gestione errori nelle routine principali.
+* Completare l'implementazione dei metodi `handle()`.
+* Definire la convenzione di recovery (Abort / Retry / Continue).
+* Integrare il menu ARC nel sistema a classi.
+* Portare gradualmente tutti i blocchi `except` sotto `PBDError`.
+* Eliminare la gestione errori duplicata dai moduli.
 
-La CLI usa ora in modo coerente:
+## 2. Refactoring dei moduli
 
-- `ui.line()`
-- `ui.menu()`
-- `ui.input_key()`
-- `ui.confirm()`
-- `ui.poll_key()`
-- `InputPending`
+Analizzare e migrare progressivamente:
 
-Sono stati completati:
+* `main.py`
+* `bookmarks.py`
+* `base.py`
 
-- download interattivo dei pending jobs;
-- resume dei pending jobs;
-- rebuild index;
-- gestione rate limit;
-- preservazione checkpoint;
-- gestione errori con menu Abort / Retry / Continue;
-- distinzione tra righe di progresso e storico console.
+Obiettivi:
 
----
+* utilizzo sistematico di `caapi`;
+* utilizzo sistematico di `PBDError`;
+* centralizzazione della recovery policy.
 
-## Priorità 1 - Refactoring `pixiv_errors.py`
+## 3. Download subsystem
 
-Obiettivo: trasformare `pixiv_errors.py` nel centro della politica di recovery.
+* Rifattorizzazione del flusso download.
+* Integrazione completa di `DownloadRateLimitError`.
+* Conservazione dei pending jobs e dei checkpoint.
+* Verifica della politica Retry / Skip / Abort.
 
-### Da progettare
+## 4. Thread Pool System (TPS)
 
-- Gerarchia definitiva degli errori.
-- Metodi virtuali per la gestione degli errori.
-- Centralizzazione dei menu di recovery.
-- Centralizzazione dei messaggi utente.
-- Centralizzazione della logica:
-  - Abort;
-  - Retry;
-  - Continue;
-  - Rate limit wait;
-  - Resume;
-  - Checkpoint preservation.
-- Riduzione della duplicazione in `base.py` e `bookmarks.py`.
-- Valutazione di una piccola macchina a stati per i flussi di recovery.
+Implementazione successiva al completamento di ERRS e Download.
 
-### Classi / concetti da valutare
+Obiettivi:
 
-- `PixivDownloaderError`
-- `PixivApiError`
-- `RateLimitError`
-- `DownloadRateLimitError`
-- `StorageError`
-- `ContinueShortcut`
-- `RecoveryAction`
-- `RecoveryPolicy`
+* parallelizzare esclusivamente il download;
+* mantenere seriale il fetch dei bookmark;
+* garantire recovery e checkpoint consistenti;
+* definire il comportamento dei worker in caso di errore.
 
----
+## 5. Valutazioni future
 
-## Priorità 2 - Refactoring del download
-
-Obiettivo: preparare `download()` al futuro Thread Pool System senza introdurre ancora concorrenza.
-
-### Da fare
-
-- Separare meglio le fasi logiche:
-  - preparazione opera;
-  - metadata ugoira;
-  - serializzazione metadata;
-  - download file;
-  - completamento opera;
-  - gestione checkpoint.
-- Ridurre i blocchi `try/except` duplicati.
-- Delegare a `pixiv_errors.py` la scelta della recovery.
-- Rendere più esplicito il concetto di pending job.
-- Chiarire la semantica di opera completa / opera incompleta.
-
----
-
-## Priorità 3 - Thread Pool System
-
-Il TPS verrà implementato solo nella fase di download.
-
-`retrieve_bookmarks()` rimane seriale, perché i test hanno mostrato che il fetch API è già sufficientemente veloce.
-
-Architettura confermata:
-
-```text
-retrieve completo
-    ↓
-lista pending jobs
-    ↓
-download completo
+* Evoluzione di `RecoveryAction`.
+* Possibile sostituzione di `ContinueShortcut`.
+* Eventuale introduzione di policy di recovery più sofisticate.
+* Eventuale eliminazione di `GenericOperationError` se ritenuto ridondante.

@@ -1,11 +1,11 @@
 from .base import PixivBaseDownloader
 from .bookmarks import PixivBookmarksDownloader
-from .pixiv_errors import (
+from .errors import (
     PixivApiError,
     PixivDownloaderError,
     StorageError,
 )
-from .pixiv_types import (
+from .pbd_types import (
     LoginCred,
     LoginFailedError,
 )

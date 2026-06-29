@@ -3,7 +3,7 @@ from __future__ import annotations
 from .bookmarks import PixivBookmarksDownloader
 from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR, PBD_ROOT
 from .my_gppt import PixivAuth
-from .pixiv_types import LoginFailedError
+from .pbd_types import LoginFailedError
 from .test import runtest8
 from .ui import ui
 
@@ -62,22 +62,22 @@ def _main() -> None:
 
 
 def main() -> None:
+
     try:
 
         _main()
 
-    except (KeyError, LoginFailedError):
+    except (KeyError, LoginFailedError) as e:
 
         ui.line(
-            "[!]: Request limit seem to be exceeded. "
-            "Try again later.",
+            f"[!]: {type(e).__name__}: {e}",
             ui.COLOR_ERROR,
-        )        
+        )
 
     except KeyboardInterrupt:
 
         ui.line(
-            "[!]: SIGINT",
+            "[!]: Process terminated by user. ",
             ui.COLOR_ERROR,
         )
 
@@ -86,8 +86,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     # graph()
     # bucks()
     # pathtest()
-    runtest8()
+    # runtest8()

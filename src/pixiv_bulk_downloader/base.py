@@ -18,14 +18,14 @@ from .const import (
     WORK_METADATA_FILE,
 )
 from .metadata import PixivMetadata
-from .pixiv_errors import (
+from .errors import (
     ContinueShortcut,
     DownloadRateLimitError,
     call_download_api,
     prompt_error_menu,
     wait_rate_limit,
 )
-from .pixiv_path import PixivPath
+from .pbd_path import PixivPath
 from .ui import InputPending, ui
 
 

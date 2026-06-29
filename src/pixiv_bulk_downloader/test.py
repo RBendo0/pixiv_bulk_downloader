@@ -13,7 +13,7 @@ import pwinput
 from matplotlib.widgets import Slider
 from rich.console import Console
 
-from .pixiv_path import PixivPath
+from .pbd_path import PixivPath
 from .ui import ui
 from .utils import abort_requested
 

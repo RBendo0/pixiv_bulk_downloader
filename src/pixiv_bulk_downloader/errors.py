@@ -22,41 +22,6 @@ class ContinueShortcut(Exception):
     pass
 
 
-class PixivDownloaderError(Exception):
-    """
-    Classe base per tutte le eccezioni del downloader.
-    """
-    pass
-
-
-class PixivApiError(PixivDownloaderError):
-    """
-    Errore durante comunicazione o elaborazione
-    di una risposta proveniente dalle API Pixiv.
-    """
-    pass
-
-
-class RateLimitError(PixivApiError):
-    pass
-
-
-class ApiRateLimitError(RateLimitError):
-    pass
-
-
-class DownloadRateLimitError(RateLimitError):
-    pass
-
-
-class StorageError(PixivDownloaderError):
-    """
-    Errore durante accesso al filesystem,
-    gestione checkpoint o serializzazione dati.
-    """
-    pass
-
-
 def prompt_error_menu(
     options: dict[str, str],
     valid: str,
@@ -79,19 +44,6 @@ def prompt_error_menu(
     ui.clear_lines(menu_lines + 1)
 
     return choice
-
-
-def is_rate_limited(page) -> bool:
-
-    if page is None:
-        return False
-
-    if "error" in page:
-        error = page["error"]
-        if error.get("message") == "Rate Limit":
-            return True
-
-    return False
 
 
 def wait_rate_limit(
@@ -135,34 +87,79 @@ def wait_rate_limit(
     return True
 
 
-def is_remote_disconnected(exc: BaseException) -> bool:
-
-    current: BaseException | None = exc
-
-    while current is not None:
-
-        if isinstance(current, RemoteDisconnected):
-            return True
-
-        current = current.__cause__ or current.__context__
-
-    return False
+class RecoveryAction:
+    pass
 
 
-def call_download_api(
-    func: Callable[P, R],
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> R:
+# Classe base interna per tutte le eccezioni gestite da PBD.
+class PBDError(Exception):
 
-    try:
-        return func(*args, **kwargs)
+    @classmethod
+    def from_exception(cls, e: Exception) -> "PBDError":
 
-    except Exception as e:
+        if isinstance(e, PBDError):
+            return e
 
-        if is_remote_disconnected(e):
-            raise DownloadRateLimitError(
-                "Remote server closed connection during download"
-            ) from e
+        return PBDError(str(e))
 
-        raise
+    def handle(self, ui) -> RecoveryAction:
+        pass
+
+    def _prompt_error_menu(self, ui) -> RecoveryAction:
+        pass
+
+    @classmethod
+    def _is_remote_disconnected(cls, e: Exception) -> bool:
+        pass
+
+
+class ApiError(PBDError):
+
+    pass
+
+
+class RateLimitError(ApiError):
+
+    def handle(self, ui) -> RecoveryAction:
+        pass
+
+    def _wait_rate_limit(self, ui) -> bool:
+        pass
+
+
+class ApiRateLimitError(RateLimitError):
+
+    @classmethod
+    def is_rate_limited(cls, page) -> bool:
+
+        if page is None:
+            return False
+
+        if "error" in page:
+            error = page["error"]
+            if error.get("message") == "Rate Limit":
+                return True
+
+        return False
+
+
+class DownloadRateLimitError(RateLimitError):
+
+    @classmethod
+    def is_remote_disconnected(cls, exc: BaseException) -> bool:
+
+        current: BaseException | None = exc
+
+        while current is not None:
+
+            if isinstance(current, RemoteDisconnected):
+                return True
+
+            current = current.__cause__ or current.__context__
+
+        return False
+
+
+class GenericOperationError(PBDError):
+
+    pass
