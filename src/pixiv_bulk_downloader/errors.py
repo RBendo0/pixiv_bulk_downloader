@@ -108,10 +108,6 @@ class PBDError(Exception):
     def _prompt_error_menu(self, ui) -> RecoveryAction:
         pass
 
-    @classmethod
-    def _is_remote_disconnected(cls, e: Exception) -> bool:
-        pass
-
 
 class ApiError(PBDError):
 

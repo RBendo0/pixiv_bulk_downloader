@@ -17,15 +17,15 @@ from .const import (
     UGOIRA_ZIP_FILE,
     WORK_METADATA_FILE,
 )
-from .metadata import PixivMetadata
 from .errors import (
     ContinueShortcut,
     DownloadRateLimitError,
-    call_download_api,
     prompt_error_menu,
     wait_rate_limit,
 )
+from .metadata import PixivMetadata
 from .pbd_path import PixivPath
+from .pixiv_call_api import caapi
 from .ui import InputPending, ui
 
 
@@ -127,7 +127,10 @@ class PixivBaseDownloader:
 
                         try: 
 
-                            ugoira_data = self.aapi.ugoira_metadata(_id_)
+                            ugoira_data = caapi.ugoira_metadata(
+                                self.aapi,
+                                _id_,
+                            )                            
                             zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
 
                             break
@@ -238,12 +241,12 @@ class PixivBaseDownloader:
 
                         try:
                             
-                            call_download_api(
-                                self.aapi.download,
+                            caapi.download(
+                                self.aapi,
                                 link,
                                 path=str(work_dir),
                                 fname=fname,
-                            )
+                            )                            
 
                             break
 

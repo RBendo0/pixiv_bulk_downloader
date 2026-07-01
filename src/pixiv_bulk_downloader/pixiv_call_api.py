@@ -70,6 +70,9 @@ class CallAAPI:
 
     def parse_qs(self, aapi, *args, **kwargs):
         return aapi.parse_qs(*args, **kwargs)
+    
+    def user_id(self, aapi):
+        return aapi.user_id
 
     def user_detail(self, aapi, *args, **kwargs):
         return self.call_api(aapi.user_detail, *args, **kwargs)

@@ -6,15 +6,16 @@ from typing import TYPE_CHECKING, Any
 
 from .base import PixivBaseDownloader
 from .const import BOOKMARKS_DIR
-from .metadata import PixivMetadata
 from .errors import (
-    PixivApiError,
+    ApiError,
+    ApiRateLimitError,
     RateLimitError,
-    is_rate_limited,
     prompt_error_menu,
     wait_rate_limit,
 )
+from .metadata import PixivMetadata
 from .pbd_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
+from .pixiv_call_api import caapi
 from .timing import (
     PIXIV_API_DELAY_MIN,
     random_api_delay,
@@ -115,14 +116,20 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             return
 
         try:
-
             # Numero di opere totali
-            total = self.aapi.user_detail(self.aapi.user_id)["profile"][
+            total = caapi.user_detail(
+                self.aapi,
+                caapi.user_id(self.aapi),
+            )["profile"][
                 "total_illust_bookmarks_public"
             ]
 
             # Prima inizializzazione della pagina corrente e successiva 
-            res_json: JsonDict = self.aapi.user_bookmarks_illust(target_id, restrict=restrict)
+            res_json: JsonDict = caapi.user_bookmarks_illust(
+                self.aapi,
+                target_id,
+                restrict=restrict,
+            )
             next_json: JsonDict | None = res_json
 
         except Exception as e:
@@ -188,7 +195,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             # assert next_json is not None
 
             # Passa alla pagina successiva  
-            next_qs = None if next_json is None else self.aapi.parse_qs(next_json.get("next_url")) 
+            next_qs = None if next_json is None else caapi.parse_qs(
+                self.aapi,
+                next_json.get("next_url"),
+            )
 
             if next_qs is None:
 
@@ -198,7 +208,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             else:
                 try:
 
-                    next_json = self.aapi.user_bookmarks_illust(**next_qs)
+                    next_json = caapi.user_bookmarks_illust(
+                        self.aapi,
+                        **next_qs,
+                    )
 
                 except Exception as e:
 
@@ -439,7 +452,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             try:
 
-                self.aapi.illust_bookmark_add(
+                caapi.illust_bookmark_add(
+                    self.aapi,
                     illust_id,
                     restrict="private",
                 )
