@@ -9,8 +9,6 @@ from .const import BOOKMARKS_DIR
 from .errors import (
     ApiError,
     ApiRateLimitError,
-    prompt_error_menu,
-    wait_rate_limit,
 )
 from .metadata import PixivMetadata
 from .pbd_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
@@ -114,6 +112,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if not ui.confirm():
             return
 
+        d_width: int | None = None
+
         try:
             
             # Numero di opere totali
@@ -124,19 +124,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 "total_illust_bookmarks_public"
             ]
 
+            # Numero di opere totali marcate come preferite
+            d_width = len(str(total))
+
         except Exception as e:
 
             ui.line(
-                f"[!]: API call failed: "
+                f"[!]: Failed to obtain total artwork count: "
                 f"{type(e).__name__}: {e}",
-                ui.COLOR_ERROR,
+                ui.COLOR_WARNING,
             )
 
-            return []
-
-        d_width = len(str(total))
         urls_len = 0
-        page_number = 0
         
         # Lista ID già scaricati
         local_ids: set[str] = set()
@@ -161,18 +160,19 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             if user_abort.is_requested:
                 break
 
-            page_number += 1
-
             try:
 
                 # Legge l'intera pagina di bookmarks, a seconda se è la prima o una successiva
                 if "user_id" not in next_qs:
+
                     res_json: JsonDict = caapi.user_bookmarks_illust(
                         self.aapi,
                         target_id,
                         restrict=restrict,
                     )
+
                 else:
+
                     res_json = caapi.user_bookmarks_illust(
                         self.aapi,
                         **next_qs
@@ -202,7 +202,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 ui.line(
                     f"[!]: {e} | "
-                    f"Page: {page_number} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_WARNING,
@@ -219,8 +218,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 ui.line(
                     "[i]: Access limited by the service. Retrying in a moment."
                 )                    
-                
-                page_number -= 1
 
                 continue
 
@@ -228,7 +225,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 ui.line(
                     f"[!]: API call failed: {e} | "
-                    f"Page: {page_number} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_ERROR,
@@ -254,8 +250,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 ui.line(
                     "[i]: Operation resumed."
                 )                    
-
-                page_number -= 1
 
                 continue
 
@@ -303,10 +297,15 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         self.save_index(image_data, BOOKMARKS_DIR)
                         urls.append(image_data)
 
+                        counter = (
+                            f"[{urls_len + idx + 1:0{d_width}d}/{total:0{d_width}d}]"
+                            if d_width is not None
+                            else f"[{urls_len + idx + 1}]"
+                        )
+
                         ui.line(
                             f"[+]: "
-                            f"[{urls_len + idx + 1:0{d_width}d}/"
-                            f"{total:0{d_width}d}]: "
+                            f"{counter}: "
                             f"{illust.title} "
                             f"(id: {illust.id}) [Indexed]",
                             history=False,

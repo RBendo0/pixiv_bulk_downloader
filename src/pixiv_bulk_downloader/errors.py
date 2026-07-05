@@ -57,6 +57,23 @@ class PBDError(Exception):
 
         return PBDError(str(e))
 
+    def _report(
+        self,
+        message: str,
+        color: str = ui.COLOR_ERROR,
+    ) -> None:
+
+        ui.line(
+            message,
+            color,
+        )
+
+    def report(self) -> None:
+
+        self._report(
+            f"[!]: {type(self).__name__}: {self}"
+        )
+
     def _error_menu(
         self,
         options: dict[str, str],
@@ -102,7 +119,13 @@ class PBDError(Exception):
 
 class ApiError(PBDError):
 
-    pass
+    def report(self, last_work_id: str = "N/A") -> None:
+
+        self._report(
+            f"[!]: API call failed: {self} | "
+            f"Last artwork: {last_work_id}",
+            ui.COLOR_ERROR,
+        )
 
 
 class PageNotFoundError(ApiError):
@@ -186,6 +209,14 @@ class ApiRateLimitError(RateLimitError):
                 return True
 
         return False
+
+    def report(self, last_work_id: str = "N/A") -> None:
+
+        self._report(
+            f"[!]: API Request Limit Reached. | "
+            f"Last artwork: {last_work_id}",
+            ui.COLOR_WARNING,
+        )
 
 
 class DownloadRateLimitError(RateLimitError):
