@@ -94,8 +94,6 @@ class PixivBaseDownloader:
         # Stampe informative
         ui.line("[i]: " + user_abort.prompt)
                 
-        # Ridondante
-        # save_path.mkdir(parents=True, exist_ok=True)
         data_len = len(data)
         d_width = len(str(data_len))
         for idx, image_data in enumerate(data):
@@ -395,6 +393,7 @@ class PixivBaseDownloader:
                     continue
 
                 try:
+
                     with open(index_file, "r", encoding="utf-8") as f:
                         image_data: PixivMetadata = PixivMetadata(data=json.load(f))
 

@@ -9,7 +9,6 @@ from .const import BOOKMARKS_DIR
 from .errors import (
     ApiError,
     ApiRateLimitError,
-    RateLimitError,
     prompt_error_menu,
     wait_rate_limit,
 )
@@ -116,6 +115,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             return
 
         try:
+            
             # Numero di opere totali
             total = caapi.user_detail(
                 self.aapi,
@@ -123,14 +123,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             )["profile"][
                 "total_illust_bookmarks_public"
             ]
-
-            # Prima inizializzazione della pagina corrente e successiva 
-            res_json: JsonDict = caapi.user_bookmarks_illust(
-                self.aapi,
-                target_id,
-                restrict=restrict,
-            )
-            next_json: JsonDict | None = res_json
 
         except Exception as e:
 
@@ -145,7 +137,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         d_width = len(str(total))
         urls_len = 0
         page_number = 0
-        paging_fault: Exception | None = None
         
         # Lista ID già scaricati
         local_ids: set[str] = set()
@@ -154,9 +145,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if mode in ("missing", "chrono"):
             for folder in BOOKMARKS_DIR.rglob("*_*"):
                 local_ids.add(folder.name.split("_")[0])
-
-        # Imposta ultima pagina non ancora raggiunta (solo modalità chrono)
-        is_chrono_last_missing_page = False
 
         # Imposta interruzione da utente
         user_abort = InputPending(
@@ -174,51 +162,28 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 break
 
             page_number += 1
-            paging_fault = None 
 
-            # Aggiorna la pagina successiva
-            if page_number > 1 and next_json is not None:
-                res_json = next_json
+            try:
 
-            # ASSERT DISABILITATA
-            #
-            # In teoria next_json non dovrebbe mai essere None
-            # all'interno del ciclo while, perché:
-            #
-            # - viene inizializzata con res_json
-            # - viene impostata a None solo quando next_qs diventa None
-            # - in quel caso il ciclo termina
-            #
-            # Se questa assunzione si rivelasse falsa in futuro,
-            # rivalutare la logica di paginazione.
-            #
-            # assert next_json is not None
-
-            # Passa alla pagina successiva  
-            next_qs = None if next_json is None else caapi.parse_qs(
-                self.aapi,
-                next_json.get("next_url"),
-            )
-
-            if next_qs is None:
-
-                # Raggiunta l'ultima pagina dell'intero set di bookmarks
-                next_json = None
-
-            else:
-                try:
-
-                    next_json = caapi.user_bookmarks_illust(
+                # Legge l'intera pagina di bookmarks, a seconda se è la prima o una successiva
+                if "user_id" not in next_qs:
+                    res_json: JsonDict = caapi.user_bookmarks_illust(
                         self.aapi,
-                        **next_qs,
+                        target_id,
+                        restrict=restrict,
+                    )
+                else:
+                    res_json = caapi.user_bookmarks_illust(
+                        self.aapi,
+                        **next_qs
                     )
 
-                except Exception as e:
+                # Passa alla pagina successiva  
+                next_qs = caapi.parse_qs(
+                    self.aapi,
+                    res_json.get("next_url"),
+                )
 
-                    paging_fault = e
-
-            # Verifica la validità del responso da Pixiv
-            try:
                 """
                 test_case = random.randint(1, 10)
 
@@ -232,18 +197,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 elif test_case == 3:
                     raise RateLimitError("Rate limit test")
                 """
-                if paging_fault:
-                    raise PixivApiError(
-                        f"{type(paging_fault).__name__}: "
-                        f"{paging_fault}"
-                    )                
 
-                if is_rate_limited(res_json):
-                    raise RateLimitError(
-                        "Pixiv API rate limit reached"
-                    )
-
-            except RateLimitError as e:
+            except ApiRateLimitError as e:
 
                 ui.line(
                     f"[!]: {e} | "
@@ -269,7 +224,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 continue
 
-            except PixivApiError as e:
+            except ApiError as e:
 
                 ui.line(
                     f"[!]: API call failed: {e} | "
@@ -304,20 +259,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 continue
 
-            # Modalità Chrono, primo ID pagina corrente presente in locale, termina
-            if mode == "chrono":
-                if str(res_json["illusts"][0].id) in local_ids:
-
-                    ui.line(
-                        "[-]: Last chrono page reached."
-                    )
-
-                    break
-
-                # Rileva se e è l'ultima pagina da scaricare (solo modalità chrono)
-                if next_json is not None:
-                    is_chrono_last_missing_page = (str(next_json["illusts"][0].id) in local_ids)
-
             for idx, illust in enumerate(res_json["illusts"]):
 
                 # Rileva se è stata richiesta l'interruzione del processo
@@ -330,18 +271,30 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     user_abort.set_notified()
 
-                # Modalità Missing o Chrono ultima pagina, se l'ID corrente è presente in locale, salta il ciclo
-                if (mode == "missing" or is_chrono_last_missing_page) and str(illust.id) in local_ids:
+                # Opera già presente nel database locale
+                if str(illust.id) in local_ids:
 
-                    ui.line(
-                        f"[-]: Already downloaded: "
-                        f"{illust.title} "
-                        f"(id: {illust.id})",
-                        history=False,
-                    )                    
-                                        
-                    continue
-                
+                    # Modalità Missing, se l'ID corrente è presente in locale salta il ciclo
+                    if mode == "missing":
+
+                        ui.line(
+                            f"[-]: Already downloaded: "
+                            f"{illust.title} "
+                            f"(id: {illust.id})",
+                            history=False,
+                        )                    
+                                            
+                        continue
+
+                    # Modalità Chrono, se l'ID corrente è presente in locale termina la scansione
+                    if mode == "chrono":
+
+                        ui.line(
+                            "[-]: Last chrono page reached."
+                        )
+
+                        return urls
+
                 while True:
 
                     try:

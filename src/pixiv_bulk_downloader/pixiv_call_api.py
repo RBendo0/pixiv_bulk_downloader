@@ -7,6 +7,7 @@ from .errors import (
     ApiError,
     ApiRateLimitError,
     DownloadRateLimitError,
+    PageNotFoundError,
     PBDError,
 )
 
@@ -24,9 +25,11 @@ class CallAAPI:
     ) -> R:
 
         try:
+
             result = func(*args, **kwargs)
 
         except Exception as e:
+
             raise ApiError(str(e)) from e
         
         if (
@@ -35,6 +38,14 @@ class CallAAPI:
         ):
             raise ApiRateLimitError(
                 "Pixiv API rate limit reached"
+            )
+        
+        if (
+            isinstance(result, dict)
+            and PageNotFoundError.is_page_not_found(result)
+        ):
+            raise PageNotFoundError(
+                "Pixiv resource not found"
             )
 
         return result

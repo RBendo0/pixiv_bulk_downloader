@@ -1,7 +1,6 @@
 import time
-from collections.abc import Callable
+from enum import Enum, auto
 from http.client import RemoteDisconnected
-from typing import ParamSpec, TypeVar
 
 from .timing import (
     MENU_TIMEOUT,
@@ -9,8 +8,8 @@ from .timing import (
 )
 from .ui import ui
 
-P = ParamSpec("P")
-R = TypeVar("R")
+# P = ParamSpec("P")
+# R = TypeVar("R")
 
 
 class ContinueShortcut(Exception):
@@ -22,72 +21,23 @@ class ContinueShortcut(Exception):
     pass
 
 
-def prompt_error_menu(
-    options: dict[str, str],
-    valid: str,
-    default: str = "",
-    timeout: int = MENU_TIMEOUT,
-) -> str:
+class RecoveryControl(Exception):
 
-    menu_lines = ui.menu(
-        title="",
-        options=options,
-        top_margin=1,
-    )
-
-    choice = ui.input_key(
-        valid=valid,
-        default=default,
-        timeout=timeout,
-    )
-
-    ui.clear_lines(menu_lines + 1)
-
-    return choice
+    class Action(Enum):
+        ABORT = auto()
+        RETRY = auto()
+        CONTINUE = auto()
 
 
-def wait_rate_limit(
-    seconds: int = RATE_LIMIT_WAIT,
-) -> bool:
-
-    ui.line()
-
-    for remaining in range(
-        seconds,
-        0,
-        -1,
-    ):
-
-        ui.line(
-            f"[!]: Access limited. "
-            f"Retry in {remaining}s "
-            f"[A] Abort",
-            history=False, 
-        )
-
-        start = time.time()
-
-        while (
-            time.time() - start
-            < 1.0
-        ):
-
-            key = ui.poll_key("A")
-
-            if key == "A":
-    
-                ui.clear_lines(0)
-    
-                return False
-
-            time.sleep(0.05)
-
-    ui.clear_lines(0)
-
-    return True
+class Abort(RecoveryControl):
+    pass
 
 
-class RecoveryAction:
+class Retry(RecoveryControl):
+    pass
+
+
+class Continue(RecoveryControl):
     pass
 
 
@@ -95,18 +45,59 @@ class RecoveryAction:
 class PBDError(Exception):
 
     @classmethod
-    def from_exception(cls, e: Exception) -> "PBDError":
+    def hierarchy(cls, e: Exception) -> "PBDError":
 
         if isinstance(e, PBDError):
             return e
 
         return PBDError(str(e))
 
-    def handle(self, ui) -> RecoveryAction:
-        pass
+    @classmethod
+    def cast(cls, e: Exception) -> "PBDError":
 
-    def _prompt_error_menu(self, ui) -> RecoveryAction:
-        pass
+        return PBDError(str(e))
+
+    def _error_menu(
+        self,
+        options: dict[str, str],
+        valid: str,
+        default: str = "",
+        timeout: int = MENU_TIMEOUT,
+    ) -> str:
+
+        menu_lines = ui.menu(
+            title="",
+            options=options,
+            top_margin=1,
+        )
+
+        choice = ui.input_key(
+            valid=valid,
+            default=default,
+            timeout=timeout,
+        )
+
+        ui.clear_lines(menu_lines + 1)
+
+        return choice
+    
+    def handle(self) -> RecoveryControl.Action:
+
+        action = self._error_menu(
+            {
+                "A": "Abort",
+                "R": "Retry",
+                "C": "Continue",
+            },
+            valid="ARC",
+            default="C",
+        )
+
+        return {
+            "A": RecoveryControl.Action.ABORT,
+            "R": RecoveryControl.Action.RETRY,
+            "C": RecoveryControl.Action.CONTINUE,
+        }[action]
 
 
 class ApiError(PBDError):
@@ -114,14 +105,72 @@ class ApiError(PBDError):
     pass
 
 
+class PageNotFoundError(ApiError):
+
+    @classmethod
+    def is_page_not_found(cls, page) -> bool:
+
+        if page is None:
+            return False
+
+        if "error" in page:
+            error = page["error"]
+            if error.get("user_message") == "Page not found":
+                return True
+
+        return False
+
+
 class RateLimitError(ApiError):
 
-    def handle(self, ui) -> RecoveryAction:
-        pass
+    def _wait_rate_limit(
+        self, 
+        seconds: int = RATE_LIMIT_WAIT,
+    ) -> bool:
 
-    def _wait_rate_limit(self, ui) -> bool:
-        pass
+        ui.line()
 
+        for remaining in range(
+            seconds,
+            0,
+            -1,
+        ):
+
+            ui.line(
+                f"[!]: Access limited. "
+                f"Retry in {remaining}s "
+                f"[A] Abort",
+                history=False, 
+            )
+
+            start = time.time()
+
+            while (
+                time.time() - start
+                < 1.0
+            ):
+
+                key = ui.poll_key("A")
+
+                if key == "A":
+        
+                    ui.clear_lines(0)
+        
+                    return False
+
+                time.sleep(0.05)
+
+        ui.clear_lines(0)
+
+        return True
+
+    def handle(self) -> RecoveryControl.Action:
+
+        if self._wait_rate_limit():
+            return RecoveryControl.Action.RETRY
+
+        return RecoveryControl.Action.ABORT
+    
 
 class ApiRateLimitError(RateLimitError):
 
@@ -154,8 +203,3 @@ class DownloadRateLimitError(RateLimitError):
             current = current.__cause__ or current.__context__
 
         return False
-
-
-class GenericOperationError(PBDError):
-
-    pass
