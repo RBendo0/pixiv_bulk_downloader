@@ -28,128 +28,11 @@ class RecoveryControl(Exception):
         RETRY = auto()
         CONTINUE = auto()
 
-
-class Abort(RecoveryControl):
-    pass
-
-
-class Retry(RecoveryControl):
-    pass
-
-
-class Continue(RecoveryControl):
-    pass
-
-
-# Classe base interna per tutte le eccezioni gestite da PBD.
-class PBDError(Exception):
-
     @classmethod
-    def hierarchy(cls, e: Exception) -> "PBDError":
-
-        if isinstance(e, PBDError):
-            return e
-
-        return PBDError(str(e))
-
-    @classmethod
-    def cast(cls, e: Exception) -> "PBDError":
-
-        return PBDError(str(e))
-
-    def _report(
-        self,
-        message: str,
-        color: str = ui.COLOR_ERROR,
-    ) -> None:
-
-        ui.line(
-            message,
-            color,
-        )
-
-    def report(self) -> None:
-
-        self._report(
-            f"[!]: {type(self).__name__}: {self}"
-        )
-
-    def _error_menu(
-        self,
-        options: dict[str, str],
-        valid: str,
-        default: str = "",
-        timeout: int = MENU_TIMEOUT,
-    ) -> str:
-
-        menu_lines = ui.menu(
-            title="",
-            options=options,
-            top_margin=1,
-        )
-
-        choice = ui.input_key(
-            valid=valid,
-            default=default,
-            timeout=timeout,
-        )
-
-        ui.clear_lines(menu_lines + 1)
-
-        return choice
-    
-    def handle(self) -> RecoveryControl.Action:
-
-        action = self._error_menu(
-            {
-                "A": "Abort",
-                "R": "Retry",
-                "C": "Continue",
-            },
-            valid="ARC",
-            default="C",
-        )
-
-        return {
-            "A": RecoveryControl.Action.ABORT,
-            "R": RecoveryControl.Action.RETRY,
-            "C": RecoveryControl.Action.CONTINUE,
-        }[action]
-
-
-class ApiError(PBDError):
-
-    def report(self, last_work_id: str = "N/A") -> None:
-
-        self._report(
-            f"[!]: API call failed: {self} | "
-            f"Last artwork: {last_work_id}",
-            ui.COLOR_ERROR,
-        )
-
-
-class PageNotFoundError(ApiError):
-
-    @classmethod
-    def is_page_not_found(cls, page) -> bool:
-
-        if page is None:
-            return False
-
-        if "error" in page:
-            error = page["error"]
-            if error.get("user_message") == "Page not found":
-                return True
-
-        return False
-
-
-class RateLimitError(ApiError):
-
-    def _wait_rate_limit(
-        self, 
+    def wait_rate_limit(
+        cls, 
         seconds: int = RATE_LIMIT_WAIT,
-    ) -> bool:
+    ) -> Action:
 
         ui.line()
 
@@ -176,26 +59,122 @@ class RateLimitError(ApiError):
                 key = ui.poll_key("A")
 
                 if key == "A":
-        
                     ui.clear_lines(0)
-        
-                    return False
+                    return cls.Action.ABORT
 
                 time.sleep(0.05)
 
         ui.clear_lines(0)
 
-        return True
+        return cls.Action.RETRY
 
-    def handle(self) -> RecoveryControl.Action:
+    @classmethod
+    def prompt_error_menu(
+        cls,
+        options: dict[str, str],
+        valid: str,
+        default: str = "",
+        timeout: int = MENU_TIMEOUT,
+    ) -> Action:
 
-        if self._wait_rate_limit():
-            return RecoveryControl.Action.RETRY
+        menu_lines = ui.menu(
+            title="",
+            options=options,
+            top_margin=1,
+        )
 
-        return RecoveryControl.Action.ABORT
+        choice = ui.input_key(
+            valid=valid,
+            default=default,
+            timeout=timeout,
+        )
+
+        ui.clear_lines(menu_lines + 1)
+
+        return {
+            "A": cls.Action.ABORT,
+            "R": cls.Action.RETRY,
+            "C": cls.Action.CONTINUE,
+        }[choice]
+
+
+# Alias statico delle classe di controllo del flusso per l'uso in tutto il programma.
+rcc = RecoveryControl
+
+
+class Abort(RecoveryControl):
+    pass
+
+
+class Retry(RecoveryControl):
+    pass
+
+
+class Continue(RecoveryControl):
+    pass
+
+
+# Classe base interna per tutte le eccezioni gestite da PBD.
+class PBDError(Exception):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Operation failed"
+
+    @classmethod
+    def hierarchy(cls, e: Exception) -> "PBDError":
+
+        if isinstance(e, PBDError):
+            return e
+
+        return PBDError(str(e))
+
+    @classmethod
+    def cast(cls, e: Exception) -> "PBDError":
+
+        return PBDError(str(e))
+
+
+class ApiError(PBDError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "API call failed"
+
+
+class PageNotFoundError(ApiError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Page not found"    
+
+    @classmethod
+    def is_page_not_found(cls, page) -> bool:
+
+        if page is None:
+            return False
+
+        if "error" in page:
+            error = page["error"]
+            if error.get("user_message") == "Page not found":
+                return True
+
+        return False
+
+
+class RateLimitError(ApiError):
+    pass
     
 
 class ApiRateLimitError(RateLimitError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "API Request Limit Reached"    
 
     @classmethod
     def is_rate_limited(cls, page) -> bool:
@@ -210,16 +189,13 @@ class ApiRateLimitError(RateLimitError):
 
         return False
 
-    def report(self, last_work_id: str = "N/A") -> None:
-
-        self._report(
-            f"[!]: API Request Limit Reached. | "
-            f"Last artwork: {last_work_id}",
-            ui.COLOR_WARNING,
-        )
-
 
 class DownloadRateLimitError(RateLimitError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Download Request Limit Reached"    
 
     @classmethod
     def is_remote_disconnected(cls, exc: BaseException) -> bool:

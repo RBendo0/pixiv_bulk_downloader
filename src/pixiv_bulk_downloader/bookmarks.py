@@ -9,6 +9,8 @@ from .const import BOOKMARKS_DIR
 from .errors import (
     ApiError,
     ApiRateLimitError,
+    PBDError,
+    rcc,
 )
 from .metadata import PixivMetadata
 from .pbd_types import BookmarkMode, BookmarkOptions, BookmarkPrivacy
@@ -201,14 +203,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiRateLimitError as e:
 
                 ui.line(
-                    f"[!]: {e} | "
+                    f"[!]: {e.info()}: {e} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_WARNING,
                 )
 
-                if not wait_rate_limit():
- 
+                if rcc.wait_rate_limit() == rcc.Action.ABORT: 
+
                     ui.line(
                         "[!]: Operation interrupted by user.",
                     )
@@ -224,13 +226,13 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiError as e:
 
                 ui.line(
-                    f"[!]: API call failed: {e} | "
+                    f"[!]: {e.info()}: {e} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_ERROR,
                 )
 
-                action = prompt_error_menu(
+                action = rcc.prompt_error_menu(
                     {
                         "A": "Abort",
                         "R": "Retry",
@@ -239,7 +241,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     default="R",
                 )
 
-                if action == "A":
+                if action == rcc.Action.ABORT:
 
                     ui.line(
                         "[!]: Operation interrupted by user.",
@@ -315,6 +317,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     except Exception as e:
 
+                        # Normalizza le eccezioni di livello superiore a PBDError, per una gestione uniforme
+                        e = PBDError.hierarchy(e)
+
                         ui.line(
                             " | ",
                             home=False,
@@ -323,14 +328,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         )
 
                         ui.line(
-                            f"[!]: Failed: "
+                            f"[!]: {e.info()}: "
                             f"{type(e).__name__}: {e}",
                             ui.COLOR_ERROR,
                             home=False,
                             clear=False,
                         )                        
 
-                        action = prompt_error_menu(
+                        action = rcc.prompt_error_menu(
                             {
                                 "A": "Abort",
                                 "R": "Retry",
@@ -340,7 +345,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                             default="C",
                         )
 
-                        if action == "A":
+                        if action == rcc.Action.ABORT:
 
                             ui.line(
                                 "[!]: Operation interrupted by user."
@@ -349,10 +354,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                             # Ritorna al processo chiamante
                             return urls
                     
-                        if action == "C":
+                        if action == rcc.Action.CONTINUE:
                             break
 
-                        if action == "R":
+                        if action == rcc.Action.RETRY:
                             
                             ui.clear_lines(1)
 
@@ -413,11 +418,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 added += 1
 
             except Exception as e:
+            
+                e = PBDError.cast(e)
 
                 errors += 1
                 
                 ui.line(
-                    f" [!]: Error: {type(e).__name__}: {e}",
+                    f" [!]: {e.info()}: "
+                    f"{type(e).__name__}: {e}",
                     ui.COLOR_ERROR,
                     home=False,
                     clear=False,

@@ -5,7 +5,6 @@ from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR, PBD_ROOT
 from .my_gppt import PixivAuth
 from .pbd_types import LoginFailedError
 from .pixiv_call_api import caapi
-from .test import runtest8
 from .ui import ui
 
 
