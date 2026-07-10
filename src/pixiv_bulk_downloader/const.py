@@ -9,7 +9,9 @@ LISTS_DIR: Final[Path] = PBD_ROOT / "lists"
 
 STATE_DIR: Final[Path] = PBD_ROOT / "state"
 
-BOOKMARK_LIST_FILE: Final[Path] = LISTS_DIR / "bookmark_urls.txt"
+BOOKMARKS_PENDING: Final[Path] = LISTS_DIR / "pending_urls.txt"
+
+BOOKMARKS_NOT_FOUND: Final[Path] = LISTS_DIR / "not_found_urls.txt"
 
 DOWNLOADED_IDS_FILE: Final[Path] = STATE_DIR / "downloaded_ids.txt"
 

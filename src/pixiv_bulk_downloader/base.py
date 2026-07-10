@@ -2,26 +2,19 @@ from __future__ import annotations
 
 import json
 import shutil
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from pixivpy3 import AppPixivAPI
-
-    from .my_gppt import LoginInfo
+from pathlib import Path
 
 from .const import (
     FETCH_CHECKPOINT_FILE,
+    PBD_ROOT,
     UGOIRA_METADATA_FILE,
     UGOIRA_ZIP_FILE,
     WORK_METADATA_FILE,
 )
 from .errors import (
-    ContinueShortcut,
     DownloadRateLimitError,
-    prompt_error_menu,
-    wait_rate_limit,
+    PBDError,
+    rcc,
 )
 from .metadata import PixivMetadata
 from .pbd_path import PixivPath
@@ -31,16 +24,13 @@ from .ui import InputPending, ui
 
 class PixivBaseDownloader:
 
-    def __init__(
-        self, aapi: AppPixivAPI, login_info: LoginInfo, save_dir: Path
-    ) -> None:
-        self.aapi = aapi
-        self.login_info = login_info
-        self.save_dir = save_dir
+    # Mantenuto per eventuali modifiche future. 
+    save_dir = PBD_ROOT
 
     # Crea una nuova cartella 
+    @classmethod
     def work_dir(
-        self,
+        cls,
         save_path: Path,
         id_: int,
         title: str | None = None,
@@ -58,8 +48,9 @@ class PixivBaseDownloader:
 
         return w_dir
 
+    @classmethod
     def fetch_dir(
-        self,
+        cls,
         save_path: Path,
         id_: int        
     ) -> PixivPath:
@@ -76,7 +67,8 @@ class PixivBaseDownloader:
 
         return f_dir
 
-    def download(self, data: list[PixivMetadata], save_path: Path) -> None:
+    @classmethod
+    def download(cls, data: list[PixivMetadata], save_path: Path) -> None:
                 
         ui.line()
         ui.line("[+]: Downloading pending works...")
@@ -115,7 +107,7 @@ class PixivBaseDownloader:
                 )            
 
                 # Crea la cartella di download
-                work_dir = self.work_dir(save_path, _id_, image_data.path_title)
+                work_dir = cls.work_dir(save_path, _id_, image_data.path_title)
 
                 if _is_ugoira_:
 
@@ -125,32 +117,33 @@ class PixivBaseDownloader:
 
                         try: 
 
-                            ugoira_data = caapi.ugoira_metadata(
-                                self.aapi,
-                                _id_,
-                            )                            
+                            ugoira_data = caapi.ugoira_metadata(_id_)                            
+
                             zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
 
                             break
 
                         except Exception as e:
+
+                            e = PBDError.cast(e)
                             
                             ui.line(
-                                f"{progress} |",
+                                f"{progress} | ",
                                 home=False,
                                 clear=False,
                                 history=False,
                             )
 
                             ui.line(
-                                f" [!]: Ugoira metadata unavailable: "
+                                f"[!]: Ugoira metadata unavailable: "
+                                f"{e.info()}: "
                                 f"{type(e).__name__}: {e}",
                                 ui.COLOR_ERROR,
                                 home=False,
                                 clear=False,
                             )
 
-                            action = prompt_error_menu(
+                            action = rcc.prompt_error_menu(
                                 {
                                     "A": "Abort",
                                     "R": "Retry",
@@ -160,15 +153,15 @@ class PixivBaseDownloader:
                                 default="C",
                             )
 
-                            if action == "A":
+                            if action == rcc.Action.ABORT:
                                 ui.line("[!]: Operation interrupted by user.")
                                 return
 
-                            if action == "C":
+                            if action == rcc.Action.CONTINUE:
                                 # keep_checkpoint = True
-                                raise ContinueShortcut
+                                raise rcc.Continue
                                 
-                            if action == "R":
+                            if action == rcc.Action.RETRY:
                                 ui.clear_lines(1)
                                 continue
                     
@@ -205,16 +198,19 @@ class PixivBaseDownloader:
                             )
 
                 except Exception as e:
-                    
+
+                    e = PBDError.cast(e)                    
+
                     ui.line(
-                        f"{progress} |",
+                        f"{progress} | ",
                         home=False,
                         clear=False,
                         history=False,
                     )
 
                     ui.line(
-                        f" [!]: Failed to save metadata: "
+                        f"[!]: Failed to save metadata: "
+                        f"{e.info()}: "
                         f"{type(e).__name__}: {e} "
                         f"(checkpoint preserved)",
                         ui.COLOR_WARNING,
@@ -240,7 +236,6 @@ class PixivBaseDownloader:
                         try:
                             
                             caapi.download(
-                                self.aapi,
                                 link,
                                 path=str(work_dir),
                                 fname=fname,
@@ -251,21 +246,22 @@ class PixivBaseDownloader:
                         except DownloadRateLimitError as e:
 
                             ui.line(
-                                " |",
+                                " | ",
                                 home=False,
                                 clear=False,
                                 history=False,
                             )
 
                             ui.line(
-                                f" [!]: {type(e).__name__}: {e} "
+                                f"[!]: {e.info()}: "
+                                f"{type(e).__name__}: {e} "
                                 f"(id: {_id_})",
                                 ui.COLOR_WARNING,
                                 home=False,
                                 clear=False,
                             )
 
-                            if not wait_rate_limit():
+                            if rcc.wait_rate_limit() == rcc.Action.ABORT:
 
                                 ui.line(
                                     "[!]: Operation interrupted by user.",
@@ -281,15 +277,18 @@ class PixivBaseDownloader:
 
                         except Exception as e:
 
+                            e = PBDError.cast(e)
+
                             ui.line(
-                                " |",
+                                " | ",
                                 home=False,
                                 clear=False,
                                 history=False,
                             )
 
                             ui.line(
-                                f" [!]: Download failed: "
+                                f"[!]: Download failed: "
+                                f"{e.info()}: "
                                 f"{type(e).__name__}: {e} "
                                 f"(checkpoint preserved)",
                                 ui.COLOR_ERROR,
@@ -297,7 +296,7 @@ class PixivBaseDownloader:
                                 clear=False,
                             )
 
-                            action = prompt_error_menu(
+                            action = rcc.prompt_error_menu(
                                 {
                                     "A": "Abort",
                                     "R": "Retry",
@@ -307,26 +306,26 @@ class PixivBaseDownloader:
                                 default="C",
                             )
 
-                            if action == "A":
+                            if action == rcc.Action.ABORT:
                                 ui.line("[!]: Operation interrupted by user.")
                                 return
 
-                            if action == "C":
+                            if action == rcc.Action.CONTINUE:
                                 keep_checkpoint = True
                                 break
 
-                            if action == "R":
+                            if action == rcc.Action.RETRY:
                                 ui.clear_lines(1)
                                 continue
 
                     # Rileva se è stata richiesta l'interruzione del processo
                     if user_abort.is_requested and not user_abort.is_notified:
 
-                        message = "[!]: Operation interrupted by user. " + (
-                            "Waiting for completion of the current artwork download." if _is_ugoira_ else ""
-                        )
-
-                        ui.line(message)
+                        if not _is_ugoira_:
+                            ui.line(
+                                "[!]: Download interruption requested. "
+                                "Waiting for completion of the current artwork."
+                            )
 
                         user_abort.set_notified()
 
@@ -339,24 +338,33 @@ class PixivBaseDownloader:
                     )
 
                     if fetch_dir.exists():
+
                         shutil.rmtree(fetch_dir)
 
                 # E' stata richiesta l'interruzione, esce dal ciclo
                 if user_abort.is_requested:
+
+                    ui.line("[!]: Download interrupted by user.")
+
                     break
 
-            except ContinueShortcut:
+            except rcc.Continue:
                 continue
+
+        else:
             
+            ui.line("[+]: Download completed.")            
+            
+    @classmethod
     def save_index(
-        self,
+        cls,
         image_data: PixivMetadata,
         save_path: Path,
     ) -> None:
 
         # Directory temporanea utilizzata per il checkpoint.
         # Viene eliminata dopo il completamento del download.        
-        fetch_dir = self.fetch_dir(save_path, image_data.id)
+        fetch_dir = cls.fetch_dir(save_path, image_data.id)
 
         # Crea percorso file indice
         index_file = fetch_dir / FETCH_CHECKPOINT_FILE
@@ -364,9 +372,10 @@ class PixivBaseDownloader:
         # salva il record di dati
         with open(index_file, "w", encoding="utf-8") as f:
             json.dump(image_data.to_dict(), f)
-
+    
+    @classmethod
     def rebuild_index(
-        self,
+        cls,
         save_path: Path,
     ) -> list[PixivMetadata]:
 
@@ -408,8 +417,11 @@ class PixivBaseDownloader:
 
                 except Exception as e:
 
+                    e = PBDError.cast(e)
+
                     ui.line(
                         f"[!]: Failed to load index: {index_file}: "
+                        f"{e.info()}: "
                         f"{type(e).__name__}: {e}",
                         ui.COLOR_ERROR,
                     )
@@ -418,14 +430,14 @@ class PixivBaseDownloader:
 
         return data
     
+    @classmethod
     def resume_pending_jobs(
-        self,
-        save_path: Path,
+        cls,
     ) -> None:
 
         ui.line("[+]: Rebuilding pending jobs index...")
 
-        pending = self.rebuild_index(save_path)
+        pending = cls.rebuild_index(cls.save_dir)
 
         if not pending:
             ui.line(
@@ -438,7 +450,7 @@ class PixivBaseDownloader:
             f"[+]: Found {len(pending)} pending jobs."
         )
 
-        self.download(
+        cls.download(
             pending,
-            save_path,
+            cls.save_dir,
         )

@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ParamSpec, TypeVar
+from typing import (
+    ParamSpec,
+    TypeVar,
+    cast,
+)
+
+from pixivpy3 import AppPixivAPI
 
 from .errors import (
     ApiError,
     ApiRateLimitError,
     DownloadRateLimitError,
     PageNotFoundError,
-    PBDError,
 )
+from .my_gppt import LoginInfo, PixivAuth
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -17,8 +23,20 @@ R = TypeVar("R")
 
 class CallAAPI:
 
+    aapi: AppPixivAPI | None = None
+    login_info: LoginInfo | None = None
+
+    @classmethod
+    def _aapi(cls) -> AppPixivAPI:
+        return cast(AppPixivAPI, cls.aapi)
+
+    @classmethod
+    def open_session(cls) -> None:
+        cls.aapi, cls.login_info = cls.auth(PixivAuth())
+
+    @classmethod
     def call_api(
-        self,
+        cls,
         func: Callable[P, R],
         *args: P.args,
         **kwargs: P.kwargs,
@@ -50,8 +68,9 @@ class CallAAPI:
 
         return result
 
+    @classmethod
     def call_download_api(
-        self,
+        cls,
         func: Callable[P, R],
         *args: P.args,
         **kwargs: P.kwargs,
@@ -70,36 +89,46 @@ class CallAAPI:
 
             raise ApiError(str(e)) from e
 
-    def call_auth_api(self, func, *args, **kwargs):
+    @classmethod
+    def call_auth_api(cls, func, *args, **kwargs):
         return func(*args, **kwargs)
 
-    def auth(self, auth_provider, *args, **kwargs):
-        return self.call_auth_api(auth_provider.auth, *args, **kwargs)
+    @classmethod
+    def auth(cls, auth_provider, *args, **kwargs):
+        return cls.call_auth_api(auth_provider.auth, *args, **kwargs)
 
-    def refresh(self, token_provider, *args, **kwargs):
-        return self.call_auth_api(token_provider.refresh, *args, **kwargs)
+    @classmethod
+    def refresh(cls, token_provider, *args, **kwargs):
+        return cls.call_auth_api(token_provider.refresh, *args, **kwargs)
 
-    def parse_qs(self, aapi, *args, **kwargs):
-        return aapi.parse_qs(*args, **kwargs)
+    @classmethod
+    def parse_qs(cls, *args, **kwargs):
+        return cls._aapi().parse_qs(*args, **kwargs)
+
+    @classmethod
+    def user_id(cls):
+        return cls._aapi().user_id
     
-    def user_id(self, aapi):
-        return aapi.user_id
+    @classmethod
+    def user_detail(cls, *args, **kwargs):
+        return cls.call_api(cls._aapi().user_detail, *args, **kwargs)
 
-    def user_detail(self, aapi, *args, **kwargs):
-        return self.call_api(aapi.user_detail, *args, **kwargs)
+    @classmethod
+    def user_bookmarks_illust(cls, *args, **kwargs):
+        return cls.call_api(cls._aapi().user_bookmarks_illust, *args, **kwargs)
 
-    def user_bookmarks_illust(self, aapi, *args, **kwargs):
-        return self.call_api(aapi.user_bookmarks_illust, *args, **kwargs)
+    @classmethod
+    def ugoira_metadata(cls, *args, **kwargs):
+        return cls.call_api(cls._aapi().ugoira_metadata, *args, **kwargs)
 
-    def ugoira_metadata(self, aapi, *args, **kwargs):
-        return self.call_api(aapi.ugoira_metadata, *args, **kwargs)
+    @classmethod
+    def illust_bookmark_add(cls, *args, **kwargs):
+        return cls.call_api(cls._aapi().illust_bookmark_add, *args, **kwargs)
 
-    def illust_bookmark_add(self, aapi, *args, **kwargs):
-        return self.call_api(aapi.illust_bookmark_add, *args, **kwargs)
-
-    def download(self, aapi, *args, **kwargs):
-        return self.call_download_api(aapi.download, *args, **kwargs)
+    @classmethod
+    def download(cls, *args, **kwargs):
+        return cls.call_download_api(cls._aapi().download, *args, **kwargs)
 
 
-# Crea un'istanza globale dell'interfaccia
-caapi = CallAAPI()
+# Alias dell'interfaccia API PixivPy3
+caapi = CallAAPI

@@ -1,22 +1,18 @@
 from __future__ import annotations
 
-from .bookmarks import PixivBookmarksDownloader
-from .const import BOOKMARK_LIST_FILE, BOOKMARKS_DIR, PBD_ROOT
-from .my_gppt import PixivAuth
+from .bookmarks import pbd
 from .pbd_types import LoginFailedError
 from .pixiv_call_api import caapi
 from .ui import ui
 
 
-def interact(
-    b: PixivBookmarksDownloader,
-) -> None:
+def interact() -> None:
 
     actions = {
-        "1": b.download_bookmarks,
-        "2": lambda: b.resume_pending_jobs(BOOKMARKS_DIR),
-        "3": lambda: b.add_list_to_bookmarks(BOOKMARK_LIST_FILE),
-        "4": b.convert_bookmarks_to_private,
+        "1": pbd.download_bookmarks,
+        "2": pbd.resume_pending_jobs,
+        "3": pbd.add_list_to_bookmarks,
+        "4": pbd.convert_bookmarks_to_private,
     }
 
     while True:
@@ -51,14 +47,11 @@ def interact(
             continue
         
         actions[choice]()
-        
-        ui.line("[+]: Finish!")
 
 
 def _main() -> None:
-    aapi, login_info = caapi.auth(PixivAuth())
-    b = PixivBookmarksDownloader(aapi, login_info, PBD_ROOT)
-    interact(b)
+    caapi.open_session()
+    interact()
 
 
 def main() -> None:

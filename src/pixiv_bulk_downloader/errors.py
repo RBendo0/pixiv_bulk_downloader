@@ -8,18 +8,6 @@ from .timing import (
 )
 from .ui import ui
 
-# P = ParamSpec("P")
-# R = TypeVar("R")
-
-
-class ContinueShortcut(Exception):
-    """
-    Eccezione di controllo del flusso utilizzata per
-    interrompere l'elaborazione dell'opera corrente e
-    passare direttamente a quella successiva.
-    """
-    pass
-
 
 class RecoveryControl(Exception):
 
@@ -97,21 +85,18 @@ class RecoveryControl(Exception):
             "C": cls.Action.CONTINUE,
         }[choice]
 
+    class Abort(Exception):
+        pass
+
+    class Retry(Exception):
+        pass
+
+    class Continue(Exception):
+        pass
+
 
 # Alias statico delle classe di controllo del flusso per l'uso in tutto il programma.
 rcc = RecoveryControl
-
-
-class Abort(RecoveryControl):
-    pass
-
-
-class Retry(RecoveryControl):
-    pass
-
-
-class Continue(RecoveryControl):
-    pass
 
 
 # Classe base interna per tutte le eccezioni gestite da PBD.

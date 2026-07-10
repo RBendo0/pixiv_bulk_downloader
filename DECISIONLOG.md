@@ -200,3 +200,38 @@ I moduli applicativi possono:
 * utilizzare `PBDError.cast()` per ottenere una recovery generica;
 * utilizzare `PBDError.hierarchy()` per preservare le recovery specializzate;
 * scegliere liberamente se utilizzare o meno `handle()`.
+
+---
+
+# Decisione 008 - Evoluzione di caapi in gestore della sessione Pixiv
+
+## Problema
+
+`caapi` centralizza già tutte le chiamate verso le librerie esterne, ma la sessione Pixiv (`AppPixivAPI` e `LoginInfo`) continua ad essere mantenuta dai downloader e passata ad ogni invocazione.
+
+Questo introduce dipendenze inutili tra i workflow applicativi e l'implementazione della sessione.
+
+## Decisione
+
+Trasformare `caapi` da semplice facciata delle API a gestore della sessione Pixiv.
+
+La sessione verrà aperta esplicitamente tramite:
+
+```python
+caapi.open_session(PixivAuth())
+```
+
+e mantenuta internamente da `caapi`.
+
+## Motivazioni
+
+* assegnare ad un unico componente la responsabilità della sessione Pixiv;
+* eliminare la propagazione di `AppPixivAPI` e `LoginInfo` nei moduli applicativi;
+* semplificare le firme dei metodi pubblici;
+* rendere i downloader semplici orchestratori dei workflow.
+
+## Conseguenze
+
+Le chiamate API non riceveranno più `self.aapi` come parametro.
+
+`PixivBaseDownloader` non dovrà più mantenere lo stato della sessione e potrà essere ulteriormente semplificato, demandando completamente a `caapi` la gestione del collegamento con Pixiv.

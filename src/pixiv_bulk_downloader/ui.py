@@ -16,8 +16,9 @@ class UI:
 
     COLOR_RESET = "\033[0m"       # nero
 
+    @classmethod
     def line(
-        self,
+        cls,
         text: str = "",
         color: str = COLOR_DEFAULT,
         *,
@@ -41,14 +42,15 @@ class UI:
 
         print(
             f"{prefix}"
-            f"{color}{text}{self.COLOR_RESET}"
+            f"{color}{text}{cls.COLOR_RESET}"
             f"{postfix}",
             end="",
             flush=True,
         )
 
+    @classmethod
     def menu(
-        self,
+        cls,
         title: str,
         options: dict[str, str],
         footer: str = "",
@@ -60,7 +62,7 @@ class UI:
         menu_lines = 0
 
         for _ in range(top_margin):
-            self.line()
+            cls.line()
             menu_lines += 1
 
         if title:
@@ -69,39 +71,40 @@ class UI:
             frameline = "=" * width
 
             if frame: 
-                self.line(frameline)
+                cls.line(frameline)
                 menu_lines += 1
             
-            self.line(f" {title}")
+            cls.line(f" {title}")
 
             if frame: 
-                self.line(frameline)
+                cls.line(frameline)
                 menu_lines += 1
 
-            self.line()
+            cls.line()
 
             menu_lines += 2
 
         for key, label in options.items():
-            self.line(f"[{key}] {label}")
+            cls.line(f"[{key}] {label}")
             menu_lines += 1
         
-        self.line()
+        cls.line()
         menu_lines += 1
 
         if footer:
-            self.line(footer)
-            self.line()
+            cls.line(footer)
+            cls.line()
             menu_lines += 2
 
         for _ in range(bottom_margin):
-            self.line()
+            cls.line()
             menu_lines += 1
 
         return menu_lines
 
+    @classmethod
     def clear_lines(
-        self,
+        cls,
         lines: int = 0,
     ) -> None:
 
@@ -111,8 +114,9 @@ class UI:
 
             print("\033[A\033[K", end="", flush=True)
 
+    @classmethod
     def input_key(
-        self,
+        cls,
         prompt: str = "",
         valid: str = "",
         default: str = "",
@@ -126,7 +130,7 @@ class UI:
 
             while True:
 
-                self.line(
+                cls.line(
                     prompt + ": ",
                     history=False,
                 )
@@ -142,12 +146,12 @@ class UI:
                     raise KeyboardInterrupt
 
                 if not valid or c in valid:
-                    self.line()
+                    cls.line()
                     return c
 
-                self.line(
+                cls.line(
                     "[!]: Invalid selection.",
-                    self.COLOR_ERROR,
+                    cls.COLOR_ERROR,
                     home=False,
                     clear=False,
                     history=False,
@@ -164,7 +168,7 @@ class UI:
 
             for remaining in range(timeout, 0, -1):
 
-                self.line(
+                cls.line(
                     prompt + f" (Default [{default}] tra {remaining}s): ",
                     history=False,
                 )
@@ -184,12 +188,12 @@ class UI:
                             raise KeyboardInterrupt
 
                         if not valid or c in valid:
-                            self.line()
+                            cls.line()
                             return c
 
-                        self.line(
+                        cls.line(
                             "[!]: Invalid selection.",
-                            self.COLOR_ERROR,
+                            cls.COLOR_ERROR,
                             home=False,
                             clear=False,
                             history=False,
@@ -206,24 +210,26 @@ class UI:
 
                     time.sleep(0.05)
 
-            self.line("")
+            cls.line("")
 
             return default
 
-    def confirm(self) -> bool:
+    @classmethod
+    def confirm(cls) -> bool:
 
-        choice = ui.input_key(
-            prompt="[?] Continue (Y/N)",
+        choice = cls.input_key(
+            prompt="[?]: Continue (Y/N)",
             valid="YN",
             default="Y",
         )
 
-        ui.clear_lines(1)
+        cls.clear_lines(1)
 
         return choice == "Y"
 
+    @classmethod
     def poll_key(
-        self,
+        cls,
         valid: str = "",
     ) -> str:
         
@@ -315,5 +321,5 @@ class InputPending:
         self.notified = False
 
 
-# Istanza comune della classe di interfaccia grafica
-ui = UI()
+# Alias della classe di interfaccia grafica
+ui = UI

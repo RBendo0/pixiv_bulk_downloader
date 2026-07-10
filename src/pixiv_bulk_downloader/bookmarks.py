@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+from pixivpy3.utils import JsonDict
 
 from .base import PixivBaseDownloader
-from .const import BOOKMARKS_DIR
+from .const import (
+    BOOKMARKS_DIR,
+    BOOKMARKS_NOT_FOUND,
+    BOOKMARKS_PENDING,
+)
 from .errors import (
     ApiError,
     ApiRateLimitError,
@@ -21,15 +26,11 @@ from .timing import (
 )
 from .ui import InputPending, ui
 
-if TYPE_CHECKING:
-    from pixivpy3.utils import JsonDict
-
-# import random
-
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
     
-    def interact(self) -> BookmarkOptions | None:
+    @classmethod
+    def interact(cls) -> BookmarkOptions | None:
 
         mode_map: dict[str, BookmarkMode] = {
             "1": "all",
@@ -80,32 +81,34 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             "restrict": privacy_map[c2],
         }
 
-    def download_bookmarks(self) -> None:
+    @classmethod
+    def download_bookmarks(cls) -> None:
 
         # Rileva opzioni utente
-        options: BookmarkOptions | None = self.interact()
+        options: BookmarkOptions | None = cls.interact()
 
         if not options: 
             return
 
         # Scansiona e crea la lista di opere
-        bookmarked_data = self.retrieve_bookmarks(**options)
+        bookmarked_data = cls.retrieve_bookmarks(**options)
 
         if not bookmarked_data:
             return
 
         # Scarica le opere
-        self.download(bookmarked_data, BOOKMARKS_DIR)
+        cls.download(bookmarked_data, BOOKMARKS_DIR)
 
+    @classmethod
     def retrieve_bookmarks(
-        self,
+        cls,
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
     ) -> list[PixivMetadata] | None:
 
         urls: list[PixivMetadata] = []
         next_qs: dict[str, Any] | None = {}
-        target_id = self.login_info["response"]["user"]["id"]
+        target_id = caapi.user_id()
 
         ui.line()
         ui.line("[+]: Fetching information of bookmarked works...")
@@ -120,8 +123,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             
             # Numero di opere totali
             total = caapi.user_detail(
-                self.aapi,
-                caapi.user_id(self.aapi),
+                target_id,
             )["profile"][
                 "total_illust_bookmarks_public"
             ]
@@ -160,6 +162,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             # E' stata richiesta l'interruzione, esce dal ciclo
             if user_abort.is_requested:
+
+                ui.line("[!]: Fetching interrupted by user.")
+
                 break
 
             try:
@@ -168,7 +173,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 if "user_id" not in next_qs:
 
                     res_json: JsonDict = caapi.user_bookmarks_illust(
-                        self.aapi,
                         target_id,
                         restrict=restrict,
                     )
@@ -176,13 +180,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 else:
 
                     res_json = caapi.user_bookmarks_illust(
-                        self.aapi,
                         **next_qs
                     )
 
                 # Passa alla pagina successiva  
                 next_qs = caapi.parse_qs(
-                    self.aapi,
                     res_json.get("next_url"),
                 )
 
@@ -286,7 +288,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     if mode == "chrono":
 
                         ui.line(
-                            "[-]: Last chrono page reached."
+                            "[-]: Last chrono artwork reached. Fetching completed."
                         )
 
                         return urls
@@ -296,7 +298,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     try:
 
                         image_data: PixivMetadata = PixivMetadata(illust)
-                        self.save_index(image_data, BOOKMARKS_DIR)
+                        cls.save_index(image_data, BOOKMARKS_DIR)
                         urls.append(image_data)
 
                         counter = (
@@ -366,15 +368,22 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             urls_len = len(urls)
             random_api_delay(PIXIV_API_DELAY_MIN)
 
+        else:
+
+            # WHILE ... ELSE, eseguito solamente se il ciclo while 
+            # termina senza interruzioni forzate quali break o return
+            ui.line("[+]: Fetching completed.")
+
         return urls
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
-    def add_list_to_bookmarks(self, file_path: Path) -> None:
+    @classmethod
+    def add_list_to_bookmarks(cls) -> None:
 
         ui.line()
         ui.line("[+]: Adding bookmarks from URL list...")
 
-        lines = file_path.read_text(encoding="utf-8").splitlines()
+        lines = BOOKMARKS_PENDING.read_text(encoding="utf-8").splitlines()
 
         added = 0
         errors = 0
@@ -410,7 +419,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             try:
 
                 caapi.illust_bookmark_add(
-                    self.aapi,
                     illust_id,
                     restrict="private",
                 )
@@ -450,5 +458,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             ui.COLOR_ERROR if errors else ui.COLOR_SUCCESS,
         )
 
-    def convert_bookmarks_to_private(self) -> None:
+        ui.line("[+]: Adding bookmarks completed.")
+
+    @classmethod
+    def convert_bookmarks_to_private(cls) -> None:
         pass
+
+
+# Alias del downloader principale
+pbd = PixivBookmarksDownloader

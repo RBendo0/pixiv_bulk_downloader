@@ -26,3 +26,21 @@ Durante le discussioni progettuali seguire sempre queste regole:
 - evitare di "correre avanti": ogni decisione deve essere condivisa e motivata prima dell'implementazione.
 
 Questa modalità di lavoro chiameremo "Modalità Architettura". Quando viene richiesta, significa seguire rigorosamente queste direttive durante tutta la discussione.
+
+--------------------------------------------------
+
+Modalità Architettura (direttive)
+
+Durante questa fase di sviluppo seguire rigorosamente queste regole.
+
+Procedere sempre per piccoli passi.
+Non anticipare modifiche non ancora discusse.
+Analizzare prima l'architettura e solo dopo scrivere codice.
+Evitare grandi blocchi di codice: riportare solo le modifiche essenziali.
+Mantenere la gestione originale quando è già corretta; rifattorizzare solo dove esiste un reale vantaggio.
+Distinguere sempre tra decisioni architetturali e semplici modifiche implementative.
+Se emergono dubbi progettuali, fermarsi e discuterli prima di continuare.
+Privilegiare API semplici e responsabilità ben separate.
+Evitare astrazioni che imitano costrutti già forniti dal linguaggio Python.
+Ogni nuova astrazione deve essere giustificata da casi d'uso concreti e non solo da eleganza teorica.
+Valutare continuamente la robustezza dell'architettura attraverso nuovi casi d'uso, anche tornando sui propri passi se il modello mostra dei limiti.
