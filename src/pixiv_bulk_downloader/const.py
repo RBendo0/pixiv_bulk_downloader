@@ -7,11 +7,11 @@ BOOKMARKS_DIR: Final[Path] = PBD_ROOT / "bookmarks"
 
 LISTS_DIR: Final[Path] = PBD_ROOT / "lists"
 
+NOT_FOUND_CSV_PREFIX: Final[str] = "not_found_"
+
+DISCARDED_CSV_PREFIX: Final[str] = "discarded_"
+
 STATE_DIR: Final[Path] = PBD_ROOT / "state"
-
-BOOKMARKS_PENDING: Final[Path] = LISTS_DIR / "pending_urls.txt"
-
-BOOKMARKS_NOT_FOUND: Final[Path] = LISTS_DIR / "not_found_urls.txt"
 
 DOWNLOADED_IDS_FILE: Final[Path] = STATE_DIR / "downloaded_ids.txt"
 

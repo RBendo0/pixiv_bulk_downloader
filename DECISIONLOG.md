@@ -235,3 +235,33 @@ e mantenuta internamente da `caapi`.
 Le chiamate API non riceveranno più `self.aapi` come parametro.
 
 `PixivBaseDownloader` non dovrà più mantenere lo stato della sessione e potrà essere ulteriormente semplificato, demandando completamente a `caapi` la gestione del collegamento con Pixiv.
+
+---
+
+# Decisione 009 - Uniformare la nomenclatura degli identificatori alle convenzioni Python
+Problema
+
+Nel corso dell'evoluzione del progetto sono stati introdotti identificatori con convenzioni eterogenee, derivanti da fasi diverse dello sviluppo e da successive rifattorizzazioni.
+
+Questa mancanza di uniformità riduce la leggibilità del codice e rende meno immediata l'individuazione del ruolo dei vari componenti.
+
+## Decisione
+
+Tutti gli identificatori del progetto devono essere progressivamente uniformati alle convenzioni di nomenclatura raccomandate dalle linee guida Python (PEP 8 e convenzioni consolidate del linguaggio).
+
+L'adeguamento verrà effettuato durante i normali refactoring, evitando modifiche massive dedicate esclusivamente alla rinomina.
+
+## Motivazioni
+
+mantenere uno stile coerente in tutto il progetto;
+migliorare la leggibilità del codice;
+facilitare la manutenzione e la navigazione del codice sorgente;
+rendere immediatamente riconoscibile il ruolo di moduli, classi, metodi, costanti e variabili.
+
+## Conseguenze
+
+Ogni nuovo componente dovrà rispettare fin dalla sua introduzione le convenzioni Python.
+
+Gli identificatori preesistenti verranno progressivamente uniformati durante le future attività di refactoring, senza introdurre modifiche funzionali.
+
+---

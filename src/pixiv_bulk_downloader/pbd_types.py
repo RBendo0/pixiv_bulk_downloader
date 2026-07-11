@@ -1,29 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal, TypedDict
-
-
-class LoginFailedError(Exception):
-    pass
 
 
 class LoginCred(TypedDict):
     pixiv_id: str
     password: str
-
-"""
-class NextBookmarksRequest(TypedDict):
-    user_id: str
-    restrict: str
-    filter: str
-    max_bookmark_id: str
-
-
-class NextFollowingsRequest(TypedDict):
-    user_id: str
-    restrict: str
-    offset: str
-"""
 
 
 BookmarkMode = Literal[
@@ -38,6 +21,12 @@ BookmarkPrivacy = Literal[
     "private",
 ]
 
+
 class BookmarkOptions(TypedDict):
     mode: BookmarkMode
+    restrict: BookmarkPrivacy
+
+
+class AddListOptions(TypedDict):
+    source_files: list[Path]
     restrict: BookmarkPrivacy

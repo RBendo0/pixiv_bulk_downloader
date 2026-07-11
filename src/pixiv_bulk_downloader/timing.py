@@ -8,14 +8,23 @@ RATE_LIMIT_WAIT = 60     # = 60
 
 # Pixiv API
 
-PIXIV_API_DELAY_MIN = 0.5
-PIXIV_API_DELAY_MAX = 1.5
+API_DELAY_HIGH = (0.5, 1.5)
+API_DELAY_MEDIUM = (0.2, 0.8)
+API_DELAY_LOW = (0.05, 0.2)
+API_DELAY_TURBO = (0.0, 0.02)
 
 
 # Time delay randomizer
 
 def random_api_delay(
-    base: float = PIXIV_API_DELAY_MIN, 
-    delta: float = (PIXIV_API_DELAY_MAX - PIXIV_API_DELAY_MIN)
+    t_min: float = API_DELAY_HIGH[0], 
+    t_max: float = API_DELAY_HIGH[1],
 ) -> None:
-    time.sleep(base + delta * random.random())
+    
+    time.sleep(
+        random.uniform(
+            t_min, 
+            t_max,
+        )
+    )
+    

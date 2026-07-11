@@ -129,6 +129,14 @@ class ApiError(PBDError):
         return "API call failed"
 
 
+class LoginFailedError(ApiError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Login failed"
+
+
 class PageNotFoundError(ApiError):
 
     @classmethod

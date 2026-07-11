@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from .bookmarks import pbd
-from .pbd_types import LoginFailedError
+from .errors import LoginFailedError
 from .pixiv_call_api import caapi
 from .ui import ui
 
 
-def interact() -> None:
+def main_interact() -> None:
 
     actions = {
         "1": pbd.download_bookmarks,
@@ -51,7 +51,7 @@ def interact() -> None:
 
 def _main() -> None:
     caapi.open_session()
-    interact()
+    main_interact()
 
 
 def main() -> None:
@@ -79,8 +79,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
-    # graph()
-    # bucks()
-    # pathtest()
-    # runtest8()
+    main()    
