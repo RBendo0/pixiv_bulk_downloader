@@ -1,21 +1,32 @@
 [tool.poetry]
 name = "pixiv_bulk_downloader"
 version = "3.0.0"
-description = "Pixiv Bulk Downloader for bookmarks and works of following authors"
-authors = ["eggplants <w10776e8w@yahoo.co.jp>"]
-license = "MIT"
-readme = "README.md"
-repository = "https://github.com/eggplants/pixiv-bulk-downloader"
-keywords = [
-  "downloader",
-  "cli",
-  "commandline-tool",
-  "pixivpy",
+
+# Derived from the original "pixiv-bulk-downloader"
+# by Haruna (eggplants), distributed under the MIT License.
+description = "Command-line application for downloading and managing Pixiv bookmarks."
+
+authors = [
+    "RBendo0"
 ]
+
+license = "MIT"
+
+readme = "README.md"
+
+repository = "https://github.com/RBendo0/pixiv_bulk_downloader"
+
+keywords = [
+    "pixiv",
+    "bookmark",
+    "downloader",
+    "cli",
+]
+
 classifiers = [
-  "Environment :: Console",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3 :: Only",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
 ]
 
 [tool.poetry.dependencies]
@@ -34,7 +45,7 @@ mypy = "^1.9.0"
 [build-system]
 build-backend = "poetry.core.masonry.api"
 requires = [
-  "poetry-core",
+    "poetry-core",
 ]
 
 [tool.poetry.scripts]
@@ -49,27 +60,27 @@ preview = true
 
 [tool.ruff.lint]
 select = [
-  "E",
-  "F",
-  "I",
+    "E",
+    "F",
+    "I",
 ]
 ignore = [
-  "D",
-  "D211",   # No blank lines allowed before class docstring
-  "D213",   # Multi-line docstring summary should start at the second line
-  "ISC001", # Implicitly concatenated string literals on one line
-  "COM812", # Trailing comma missing
+    "D",
+    "D211",   # No blank lines allowed before class docstring
+    "D213",   # Multi-line docstring summary should start at the second line
+    "ISC001", # Implicitly concatenated string literals on one line
+    "COM812", # Trailing comma missing
 ]
 allowed-confusables = ["／"]
 
 [tool.ruff.lint.per-file-ignores]
 "*.py" = [
-  "T201",   # `print` found
-  "ANN101", # Missing type annotation for `self` in method
+    "T201",   # `print` found
+    "ANN101", # Missing type annotation for `self` in method
 ]
 "tests/*.py" = [
-  "D",
-  "S101", # Use of assert detected
+    "D",
+    "S101", # Use of assert detected
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -84,7 +95,7 @@ strict = true
 # disallow_any_explicit = true
 # disallow_any_expr = true
 disallow_any_unimported = true
-implicit_optional = false      # for mypy<1.0
+implicit_optional = false
 strict_concatenate = true
 warn_unreachable = true
 

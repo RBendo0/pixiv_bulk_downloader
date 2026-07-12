@@ -1,8 +1,11 @@
 import msvcrt
+import re
 import time
 import weakref
 import winsound
 from dataclasses import dataclass
+from shutil import get_terminal_size
+from threading import Event, Lock, Thread, get_ident
 
 import pwinput
 
@@ -257,68 +260,222 @@ class UI:
 
         return ""
 
+    @dataclass(eq=False)
+    class InputPending:
 
-@dataclass(eq=False)
-class InputPending:
+        # poll_key() e InputPending condividono il medesimo buffer
+        # di input della console. I caratteri consumati e non validi
+        # vengono deliberatamente scartati e non sono soggetti a
+        # buffering o reiniezione.
+        #
+        # Questa scelta privilegia semplicità e prevedibilità del
+        # modello rispetto alla conservazione dell'input.
 
-    # poll_key() e InputPending condividono il medesimo buffer
-    # di input della console. I caratteri consumati e non validi
-    # vengono deliberatamente scartati e non sono soggetti a
-    # buffering o reiniezione.
-    #
-    # Questa scelta privilegia semplicità e prevedibilità del
-    # modello rispetto alla conservazione dell'input.
+        _instances = weakref.WeakSet()
 
-    _instances = weakref.WeakSet()
+        valid: str
+        prompt: str = ""
+        requested: bool = False
+        notified: bool = False
 
-    valid: str
-    prompt: str = ""
-    requested: bool = False
-    notified: bool = False
+        def __post_init__(self):
 
-    def __post_init__(self):
+            type(self)._instances.add(self)
 
-        InputPending._instances.add(self)
+        @classmethod
+        def _listen(cls) -> None:
 
-    @classmethod
-    def _listen(cls) -> None:
+            while msvcrt.kbhit():
 
-        while msvcrt.kbhit():
+                key = msvcrt.getch().decode(
+                    errors="ignore"
+                )
 
-            key = msvcrt.getch().decode(
-                errors="ignore"
+                if key == "\x03":
+                    print()
+                    raise KeyboardInterrupt
+
+                for pending in cls._instances:
+
+                    if key in pending.valid:
+
+                        pending.requested = True
+
+        @property
+        def is_requested(self) -> bool:
+
+            self._listen()
+
+            return self.requested
+
+        @property
+        def is_notified(self) -> bool:
+
+            return self.notified
+
+        def set_notified(self) -> None:
+
+            self.notified = True
+
+        def reset(self) -> None:
+
+            self.requested = False
+            self.notified = False
+            
+    class Renderer:
+
+        ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+        _lock = Lock()
+        _update_event = Event()
+
+        _thread: Thread | None = None
+
+        _thread_slots: dict[int, int] = {}
+        _slots: list[str] = [""]
+
+        @classmethod
+        def _assign_slot(cls) -> int:
+
+            thread_id = get_ident()
+
+            with cls._lock:
+
+                slot = cls._thread_slots.get(thread_id)
+
+                if slot is None:
+
+                    slot = len(cls._slots)
+
+                    cls._thread_slots[thread_id] = slot
+
+                    cls._slots.append("")
+
+                return slot
+
+        @classmethod
+        def _start(cls) -> None:
+
+            if cls._thread is not None:
+                return
+
+            with cls._lock:
+
+                if cls._thread is not None:
+                    return
+
+                cls._thread = Thread(
+                    target=cls.render_loop,
+                    name="PBD-UI-Renderer",
+                    daemon=True,
+                )
+
+                thread = cls._thread
+
+            thread.start()
+
+        # text deve contenere la riga completa già pronta per il rendering.
+        #
+        # Il Renderer aggiunge esclusivamente l'intestazione dello slot:
+        #
+        #     [+].{T00}:
+        #
+        # e il padding finale fino a LINE_WIDTH.
+        #
+        # Tutta la restante formattazione è responsabilità del chiamante.
+        #
+        # Esempio:
+        #
+        # text = (
+        #     f"{artwork.title} | "
+        #     f"{image.name} | "
+        #     f"{ui.COLOR_SUCCESS}"
+        #     f"Completed"
+        #     f"{ui.COLOR_RESET}"
+        # )
+        @classmethod
+        def write(
+            cls,
+            text: str,
+            *,
+            main: bool = False,
+        ) -> None:
+            
+            slot = 0 if main else cls._assign_slot()
+
+            line_width = get_terminal_size().columns - 1
+
+            header = (
+                "[+].{MAIN}: "
+                if main
+                else f"[+].{{T{slot:02d}}}: "
             )
 
-            if key == "\x03":
-                print()
-                raise KeyboardInterrupt
+            line = (
+                f"{UI.COLOR_DEFAULT}"
+                f"{header}"
+                f"{text}"
+                f"{UI.COLOR_RESET}"
+            )
 
-            for pending in cls._instances:
+            visible_length = len(
+                cls.ANSI_ESCAPE.sub("", line)
+            )
 
-                if key in pending.valid:
+            padding = " " * max(
+                0,
+                line_width - visible_length,
+            )
 
-                    pending.requested = True
+            with cls._lock:
 
-    @property
-    def is_requested(self) -> bool:
+                cls._slots[slot] = (
+                    line
+                    + padding
+                )
 
-        self._listen()
+            cls._start()
+            cls._update_event.set()
 
-        return self.requested
+        @classmethod
+        def clear(
+            cls,
+            *,
+            main: bool = False,
+        ) -> None:
 
-    @property
-    def is_notified(self) -> bool:
+            cls.write("", main=main)
 
-        return self.notified
+        # Entry point del thread renderer.
+        @classmethod
+        def render_loop(cls) -> None:
 
-    def set_notified(self) -> None:
+            while True:
 
-        self.notified = True
+                cls._update_event.wait()
+                cls._update_event.clear()
 
-    def reset(self) -> None:
+                with cls._lock:
 
-        self.requested = False
-        self.notified = False
+                    slots = cls._slots.copy()
+
+                cls._render(slots)
+
+        @classmethod
+        def _render(
+            cls,
+            slots: list[str],
+        ) -> None:
+
+            panel = "\n".join(slots) + "\n"
+
+            cursor_up = f"\033[{len(slots)}A\r"
+
+            print(
+                panel + cursor_up,
+                end="",
+                flush=True,
+            )
 
 
 # Alias della classe di interfaccia grafica

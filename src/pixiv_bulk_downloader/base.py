@@ -19,7 +19,7 @@ from .errors import (
 from .metadata import PixivMetadata
 from .pbd_path import PixivPath
 from .pixiv_call_api import caapi
-from .ui import InputPending, ui
+from .ui import ui
 
 
 class PixivBaseDownloader:
@@ -78,7 +78,7 @@ class PixivBaseDownloader:
             return
 
         # Imposta interruzione da utente
-        user_abort = InputPending(
+        user_abort = ui.InputPending(
             valid="Q",
             prompt="Press Q to interrupt the process."
         )

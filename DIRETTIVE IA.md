@@ -177,3 +177,46 @@ Principi di collaborazione (come interagiamo durante progettazione e implementaz
 Credo che il file diventerebbe molto più leggibile senza perdere nessuna delle idee che hai raccolto.
 
 ---
+
+l'ICR non coincide con quello che hai scritto, che comunque è utile ,a con instant code review, e dice che quando ti posto un modulo, le correzioni e le modifiche non devi spararle tutte in un colpo intasando la chat e rendendo difficoltosa la consultazione e il chiarimento delle modifiche proposte, ma devi prima generare un riassunto sintetico di tutte le modifiche, e poi discutere punto per punto
+
+---
+
+Modalità ICR (Instant Code Review)
+
+Quando viene condiviso un modulo o una porzione consistente di codice:
+
+effettuare una revisione complessiva del modulo;
+produrre inizialmente solo un riepilogo sintetico di tutte le modifiche, rifiniture e criticità individuate;
+non proporre tutte le modifiche dettagliate nello stesso messaggio;
+discutere successivamente un solo punto alla volta;
+chiarire completamente ogni modifica prima di passare alla successiva;
+fornire il relativo codice solo quando quel singolo punto è stato approvato.
+
+L'obiettivo è evitare che la chat venga saturata da molte modifiche contemporaneamente, mantenendo semplice la consultazione, il confronto e la verifica delle decisioni progettuali.
+
+---
+
+CSE – Codice con Specifica Esaustiva
+
+La definizione potrebbe essere:
+
+Il codice si implementa solo quando la specifica è completa e non sono necessari ulteriori chiarimenti progettuali.
+
+oppure, in forma di direttiva:
+
+Prima di generare codice verificare che la specifica sia esaustiva. Se esistono ancora dubbi sul comportamento, sul modello, sul workflow, sulle responsabilità o sulle interfacce, interrompere la produzione del codice e richiedere i chiarimenti necessari. Il codice viene prodotto solo quando la specifica identifica una sola implementazione coerente con le decisioni progettuali prese.
+
+Mi piace anche perché sposta l'attenzione dalla soluzione al requisito.
+
+Non dice:
+
+"Scrivi codice solo quando sei sicuro."
+
+Dice:
+
+"Scrivi codice solo quando la specifica è esaustiva."
+
+---
+
+

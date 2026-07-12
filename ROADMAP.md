@@ -14,24 +14,31 @@ Completati:
 * introduzione del modulo `iofile` (`CsvFile`);
 * uniformazione dei workflow di recovery e delle control exception.
 
-Le prossime attività riguardano prevalentemente consolidamento, pulizia architetturale e parallelizzazione del download.
+Completata l'infrastruttura del Thread Pool System (UI Renderer e DownloadPool).
+
+Le prossime attività riguardano il completamento del TPS, il consolidamento architetturale e il collaudo finale.
 
 ---
 
 # 1. Thread Pool System (TPS)
 
-Prima milestone della prossima fase.
+Prima milestone della fase di parallelizzazione.
 
-Obiettivi:
+Completati:
 
-* parallelizzare esclusivamente il download;
-* mantenere seriali login, fetching e gestione bookmark;
-* definire il modello dei worker;
-* coordinare checkpoint e recovery;
-* integrare il sistema con ERRS;
-* preservare la consistenza dello stato persistente;
-* evitare condizioni di gara sui file condivisi;
-* verificare l'impatto del rate limit con più worker.
+* `UI.Renderer`;
+* `DownloadPool`;
+* infrastruttura concorrente;
+* ciclo di vita del pool;
+* renderer concorrente della console.
+
+Da completare:
+
+* `ArtWorker`;
+* integrazione del nuovo workflow di `download()`;
+* callback e raccolta dei `Future`;
+* gestione del completamento dell'opera;
+* collaudo del TPS.
 
 ---
 

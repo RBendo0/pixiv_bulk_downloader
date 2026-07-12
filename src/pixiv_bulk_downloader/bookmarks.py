@@ -32,7 +32,7 @@ from .timing import (
     API_DELAY_TURBO,
     random_api_delay,
 )
-from .ui import InputPending, ui
+from .ui import ui
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
@@ -259,7 +259,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 local_ids.add(folder.name.split("_")[0])
 
         # Imposta interruzione da utente
-        user_abort = InputPending(
+        user_abort = ui.InputPending(
             valid="Q",
             prompt="Press Q to interrupt the process."
         )
@@ -508,7 +508,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         try:
 
             # Imposta interruzione da utente
-            user_abort = InputPending(
+            user_abort = ui.InputPending(
                 valid="Q",
                 prompt="Press Q to interrupt the process."
             )

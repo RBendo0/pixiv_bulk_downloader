@@ -3,6 +3,7 @@ from __future__ import annotations
 from .bookmarks import pbd
 from .errors import LoginFailedError
 from .pixiv_call_api import caapi
+from .tps import DownloadPool
 from .ui import ui
 
 
@@ -50,9 +51,16 @@ def main_interact() -> None:
 
 
 def _main() -> None:
-    caapi.open_session()
-    main_interact()
+    try:
 
+        caapi.open_session()
+
+        main_interact()
+
+    finally:
+
+        DownloadPool.shutdown()
+    
 
 def main() -> None:
 
@@ -75,6 +83,7 @@ def main() -> None:
         )
 
     finally:
+        
         print("\x1b[?25h", end="")
 
 
