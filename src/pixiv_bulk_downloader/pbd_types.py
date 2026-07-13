@@ -3,6 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal, TypedDict
 
+from pixivpy3.utils import JsonDict
+
+type JsonCollection = dict[str, JsonDict]
+
 
 class LoginCred(TypedDict):
     pixiv_id: str

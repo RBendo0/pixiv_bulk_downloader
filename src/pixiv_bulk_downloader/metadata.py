@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 from pixivpy3.utils import JsonDict
 
-# if TYPE_CHECKING:
-#    from pixivpy3.utils import JsonDict
+from .pbd_types import JsonCollection
 
 
 class PixivMetadata:
@@ -15,27 +16,76 @@ class PixivMetadata:
         data: JsonDict | None = None,
     ) -> None:
 
-        self._data: JsonDict = JsonDict()
+        self._collection: JsonCollection = {}
 
         if data is not None:
-            self._data = data
+            self._collection["metadata"] = data
 
     def from_json(
         self,
         data: JsonDict,
     ) -> None:
-        self._data = data
 
-    def to_dict(self) -> JsonDict | None:
-        return self._data
+        self._collection["metadata"] = data
+
+    def add(
+        self,
+        name: str,
+        data: JsonDict,
+    ) -> None:
+
+        self._collection[name] = data
+
+    def get(
+        self,
+        name: str,
+    ) -> JsonDict:
+
+        return self._collection[name]
+
+    def to_dict(
+        self,
+    ) -> JsonCollection:
+
+        return self._collection    
+
+    def save(
+        self,
+        path: Path,
+    ) -> None:
+
+        with path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+
+            json.dump(
+                self._collection,
+                file,
+                indent=4,
+                ensure_ascii=False,
+                default=str,
+            )
+
+    def load(
+        self,
+        path: Path,
+    ) -> None:
+
+        with path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+
+            self._collection = json.load(file)
 
     @property
     def id(self) -> int:
-        return self._data["id"]
+        return self._collection["metadata"]["id"]
 
     @property
     def title(self) -> str:
-        return self._data["title"]
+        return self._collection["metadata"]["title"]
     
     @property
     def path_title(self) -> str:
@@ -52,7 +102,7 @@ class PixivMetadata:
 
     @property
     def type(self) -> str:
-        return self._data["type"]
+        return self._collection["metadata"]["type"]
 
     @property
     def is_illust(self) -> bool:
@@ -73,16 +123,16 @@ class PixivMetadata:
 
         links: list[str] = []
 
-        for page in self._data["meta_pages"]:
+        for page in self._collection["metadata"]["meta_pages"]:
             links.append(page["image_urls"]["original"])
 
         if links:
             return links
 
         return [
-            self._data["meta_single_page"].get(
+            self._collection["metadata"]["meta_single_page"].get(
                 "original_image_url",
-                self._data["image_urls"]["large"],
+                self._collection["metadata"]["image_urls"]["large"],
             )
         ]
 

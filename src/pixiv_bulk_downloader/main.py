@@ -51,9 +51,15 @@ def main_interact() -> None:
 
 def _main() -> None:
 
-    caapi.open_session()
-    main_interact()
-    
+    try:
+
+        caapi.open_session()
+        main_interact()
+
+    finally:
+
+        pbd.pool_shutdown()    
+
 
 def main() -> None:
 

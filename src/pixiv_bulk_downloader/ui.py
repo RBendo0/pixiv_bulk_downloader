@@ -25,6 +25,8 @@ class UI:
 
     COLOR_RESET = "\033[0m"       # nero
 
+    _console_lock = Lock()
+
     @classmethod
     def line(
         cls,
@@ -36,26 +38,28 @@ class UI:
         history: bool = True,
     ) -> None:
 
-        prefix = ""
-        
-        if home:
-            prefix += "\r"
+        with cls._console_lock:
 
-        if clear:
-            prefix += "\033[K"
+            prefix = ""
+            
+            if home:
+                prefix += "\r"
 
-        postfix = ""
+            if clear:
+                prefix += "\033[K"
 
-        if history:
-            postfix += "\n"
+            postfix = ""
 
-        print(
-            f"{prefix}"
-            f"{color}{text}{cls.COLOR_RESET}"
-            f"{postfix}",
-            end="",
-            flush=True,
-        )
+            if history:
+                postfix += "\n"
+
+            print(
+                f"{prefix}"
+                f"{color}{text}{cls.COLOR_RESET}"
+                f"{postfix}",
+                end="",
+                flush=True,
+            )
 
     @classmethod
     def menu(
@@ -117,11 +121,13 @@ class UI:
         lines: int = 0,
     ) -> None:
 
-        print("\r\033[K", end="", flush=True)
+        with cls._console_lock:
 
-        for _ in range(lines):
+            print("\r\033[K", end="", flush=True)
 
-            print("\033[A\033[K", end="", flush=True)
+            for _ in range(lines):
+
+                print("\033[A\033[K", end="", flush=True)
 
     @classmethod
     def input_key(
@@ -334,6 +340,7 @@ class UI:
 
         _lock = Lock()
         _update_event = Event()
+        _stop_event = Event()
 
         _thread: Thread | None = None
 
@@ -379,6 +386,44 @@ class UI:
                 thread = cls._thread
 
             thread.start()
+
+        @classmethod
+        def stop(cls) -> None:
+
+            thread = cls._thread
+
+            if thread is None:
+                return
+
+            cls._stop_event.set()
+            cls._update_event.set()
+
+            thread.join()
+
+            with UI._console_lock:
+
+                lines = len(cls._slots)
+
+                for idx in range(lines):
+
+                    print("\r\033[K", end="", flush=True)
+
+                    if idx < lines - 1:
+                        print("\033[B", end="", flush=True)
+
+                if lines > 1:
+                    print(
+                        f"\033[{lines - 1}A\r",
+                        end="",
+                        flush=True,
+                    )            
+
+            with cls._lock:
+
+                cls._thread = None
+                cls._thread_slots.clear()
+                cls._slots = [""]
+                cls._stop_event.clear()
 
         # text deve contenere la riga completa già pronta per il rendering.
         #
@@ -470,6 +515,9 @@ class UI:
                 cls._update_event.wait()
                 cls._update_event.clear()
 
+                if cls._stop_event.is_set():
+                    break
+
                 with cls._lock:
 
                     slots = cls._slots.copy()
@@ -482,15 +530,17 @@ class UI:
             slots: list[str],
         ) -> None:
 
-            panel = "\n".join(slots) + "\n"
+            with UI._console_lock:
 
-            cursor_up = f"\033[{len(slots)}A\r"
+                panel = "\n".join(slots) + "\n"
 
-            print(
-                panel + cursor_up,
-                end="",
-                flush=True,
-            )
+                cursor_up = f"\033[{len(slots)}A\r"
+
+                print(
+                    panel + cursor_up,
+                    end="",
+                    flush=True,
+                )
 
 
 # Alias della classe di interfaccia grafica

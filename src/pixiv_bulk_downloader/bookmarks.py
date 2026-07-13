@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
@@ -271,10 +270,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     and not checkpoint_file.exists()
                 ):
 
-                    with open(metadata_file, "r", encoding="utf-8") as f:
-                        image_data = PixivMetadata(
-                            data=json.load(f)
-                        )
+                    image_data = PixivMetadata()
+                    image_data.load(metadata_file)
 
                     local_ids.add(str(image_data.id))
 
@@ -427,6 +424,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     try:
 
                         image_data: PixivMetadata = PixivMetadata(illust)
+
+                        if image_data.is_ugoira:
+
+                            ugoira_data = caapi.ugoira_metadata(
+                                image_data.id
+                            )
+
+                            image_data.add(
+                                "ugoira",
+                                ugoira_data,
+                            )
+
                         cls.save_index(image_data, BOOKMARKS_DIR)
                         urls.append(image_data)
 
@@ -445,6 +454,39 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         )
 
                         break
+
+                    except ApiRateLimitError as e:
+
+                        ui.line(
+                            " | ",
+                            home=False,
+                            clear=False,
+                            history=False,
+                        )
+
+                        ui.line(
+                            f"[!]: {e.info()}: {e} | "
+                            f"Artwork: {illust.title} "
+                            f"(id: {illust.id})",
+                            ui.COLOR_WARNING,
+                            home=False,
+                            clear=False,
+                        )
+
+                        if rcc.wait_rate_limit() == rcc.Action.ABORT:
+
+                            ui.line(
+                                "[!]: Operation interrupted by user.",
+                            )
+
+                            return urls
+
+                        ui.line(
+                            "[i]: Access limited by the service. "
+                            "Retrying in a moment."
+                        )
+
+                        continue
 
                     except Exception as e:
 

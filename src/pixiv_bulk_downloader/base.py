@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import json
-import shutil
 from pathlib import Path
 
 from .const import (
     FETCH_CHECKPOINT_FILE,
     PBD_ROOT,
-    UGOIRA_METADATA_FILE,
     UGOIRA_ZIP_FILE,
     WORK_METADATA_FILE,
 )
@@ -20,12 +17,27 @@ from .metadata import PixivMetadata
 from .pbd_path import PixivPath
 from .pixiv_call_api import caapi
 from .ui import ui
+from .tps import TPS
 
 
 class PixivBaseDownloader:
 
     # Mantenuto per eventuali modifiche future. 
     save_dir = PBD_ROOT
+
+    artwork_pool = TPS(
+        thread_name_prefix="ARTWORK",
+    )
+
+    image_pool = TPS(
+        thread_name_prefix="IMAGE",
+    )
+
+    @classmethod
+    def pool_shutdown(cls) -> None:
+
+        cls.artwork_pool.shutdown(wait=True)
+        cls.image_pool.shutdown(wait=True)    
 
     # Crea una nuova cartella 
     @classmethod
@@ -68,161 +80,129 @@ class PixivBaseDownloader:
         return f_dir
 
     @classmethod
-    def download(cls, data: list[PixivMetadata], save_path: Path) -> None:
-                
-        ui.line()
-        ui.line("[+]: Downloading pending works...")
+    def _download_artwork(
+        cls,
+        progress: str,
+        image_data: PixivMetadata,
+        save_path: Path,
+    ) -> None:
 
-        # Chiede conferma a procedere
-        if not ui.confirm():
-            return
+        # Mantenere il checkpoint?
+        keep_checkpoint = False
 
-        # Imposta interruzione da utente
-        user_abort = ui.InputPending(
-            valid="Q",
-            prompt="Press Q to interrupt the process."
+        # Crea la cartella di download
+        work_dir = cls.work_dir(
+            save_path,
+            image_data.id,
+            image_data.path_title,
         )
 
-        # Stampe informative
-        ui.line("[i]: " + user_abort.prompt)
-                
-        data_len = len(data)
-        d_width = len(str(data_len))
+        if image_data.is_ugoira:
+
+            ugoira_data = image_data.get("ugoira")
+
+            zip_url = (
+                ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
+            )
+
+            links = [zip_url]
+
+        else: 
         
-        for idx, image_data in enumerate(data):
+            links = image_data.get_links()            
 
-            try: 
+        try:
 
-                # Mantenere il checkpoint?
-                keep_checkpoint = False
+            ui.Renderer.write(
+                progress,
+                main=True,
+            )
 
-                _id_ = image_data.id
-                _is_ugoira_ = image_data.is_ugoira
+            # Salva l'intero dump dei metadata, animazioni comprese
+            metadata_file = work_dir / WORK_METADATA_FILE
+            image_data.save(metadata_file)
 
-                progress = (
-                    f"[+]: "
-                    f"[{idx + 1:0{d_width}d}/"
-                    f"{data_len:0{d_width}d}]: "
-                    f"{image_data.title} "
-                    f"(id: {_id_})"
-                )            
+        except Exception as e:
 
-                # Crea la cartella di download
-                work_dir = cls.work_dir(save_path, _id_, image_data.path_title)
+            e = PBDError.cast(e)                    
 
-                if _is_ugoira_:
+            ui.line(
+                f"{progress} | ",
+                history=False,
+            )
 
-                    zip_url = ""
+            ui.line(
+                f"[!]: Failed to save metadata: "
+                f"{e.info()}: "
+                f"{type(e).__name__}: {e} "
+                f"(checkpoint preserved)",
+                ui.COLOR_WARNING,
+                home=False,
+                clear=False,
+            )
 
-                    while True:
+            keep_checkpoint = True
 
-                        try: 
+        # Versione che genera il nome estraendolo dall'url
+        for link in links:
 
-                            ugoira_data = caapi.ugoira_metadata(_id_)                            
 
-                            zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
+# CICLO DI MEDIA
 
-                            break
 
-                        except Exception as e:
+        if not keep_checkpoint:
 
-                            e = PBDError.cast(e)
-                            
-                            ui.line(
-                                f"{progress} | ",
-                                home=False,
-                                clear=False,
-                                history=False,
-                            )
+            checkpoint_file = (
+                work_dir
+                / FETCH_CHECKPOINT_FILE
+            )
 
-                            ui.line(
-                                f"[!]: Ugoira metadata unavailable: "
-                                f"{e.info()}: "
-                                f"{type(e).__name__}: {e}",
-                                ui.COLOR_ERROR,
-                                home=False,
-                                clear=False,
-                            )
+            if checkpoint_file.exists():
 
-                            action = rcc.prompt_error_menu(
-                                {
-                                    "A": "Abort",
-                                    "R": "Retry",
-                                    "C": "Continue",
-                                },
-                                valid="ARC",
-                                default="C",
-                            )
+                checkpoint_file.unlink()
 
-                            if action == rcc.Action.ABORT:
-                                ui.line("[!]: Operation interrupted by user.")
-                                return
+        # E' stata richiesta l'interruzione, esce dal ciclo
+        if user_abort.is_requested:
 
-                            if action == rcc.Action.CONTINUE:
-                                # keep_checkpoint = True
-                                raise rcc.Continue
-                                
-                            if action == rcc.Action.RETRY:
-                                ui.clear_lines(1)
-                                continue
-                    
-                    links = [zip_url]
+            ui.line("[!]: Download interrupted by user.")
 
-                else: 
-                
-                    links = image_data.get_links()            
+            break
 
-                try:
 
-                    # Salva l'intero dump dei metadata
-                    metadata_file = work_dir / WORK_METADATA_FILE
-                    with open(metadata_file, "w", encoding="utf-8") as f:
-                        json.dump(
-                            image_data.to_dict(),
-                            f,
-                            indent=4,
-                            ensure_ascii=False,
-                            default=str,
-                        )
 
-                    if _is_ugoira_:
 
-                        # Salva il dump metadata delle animazioni
-                        metadata_file = work_dir / UGOIRA_METADATA_FILE
-                        with open(metadata_file, "w", encoding="utf-8") as f:
-                            json.dump(
-                                ugoira_data,
-                                f,
-                                indent=4,
-                                ensure_ascii=False,
-                                default=str,
-                            )
 
-                except Exception as e:
 
-                    e = PBDError.cast(e)                    
 
-                    ui.line(
-                        f"{progress} | ",
-                        home=False,
-                        clear=False,
-                        history=False,
-                    )
 
-                    ui.line(
-                        f"[!]: Failed to save metadata: "
-                        f"{e.info()}: "
-                        f"{type(e).__name__}: {e} "
-                        f"(checkpoint preserved)",
-                        ui.COLOR_WARNING,
-                        home=False,
-                        clear=False,
-                    )
 
-                    keep_checkpoint = True
 
-                # Versione che genera il nome estraendolo dall'url
-                for link in links:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @classmethod
+    def _download_media(
+        cls,
+    ):
 
                     basename = link.split("/")[-1].split("?")[0]
                     fname = UGOIRA_ZIP_FILE.name if _is_ugoira_ else basename.split("_")[-1] 
@@ -330,31 +310,78 @@ class PixivBaseDownloader:
 
                         user_abort.set_notified()
 
-                if not keep_checkpoint:
 
-                    checkpoint_file = (
-                        work_dir
-                        / FETCH_CHECKPOINT_FILE
-                    )
 
-                    if checkpoint_file.exists():
 
-                        checkpoint_file.unlink()
 
-                # E' stata richiesta l'interruzione, esce dal ciclo
-                if user_abort.is_requested:
 
-                    ui.line("[!]: Download interrupted by user.")
 
-                    break
 
-            except rcc.Continue:
-                continue
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @classmethod
+    def download(cls, data: list[PixivMetadata], save_path: Path) -> None:
+                
+        ui.line()
+        ui.line("[+]: Downloading pending works...")
+
+        # Chiede conferma a procedere
+        if not ui.confirm():
+            return
+
+        # Imposta interruzione da utente
+        user_abort = ui.InputPending(
+            valid="Q",
+            prompt="Press Q to interrupt the process."
+        )
+
+        # Stampe informative
+        ui.line("[i]: " + user_abort.prompt)
+                
+        data_len = len(data)
+        d_width = len(str(data_len))
+        
+        for idx, image_data in enumerate(data):
+
+            progress = (
+                f"[+]: "
+                f"[{idx + 1:0{d_width}d}/"
+                f"{data_len:0{d_width}d}]: "
+                f"{image_data.title} "
+                f"(id: {image_data.id})"
+            )
+
+
+# CICLO DI OPERA
+
+
+
+
+
+
 
         else:
-            
+
             ui.line("[+]: Download completed.")            
-            
+
+        ui.Renderer.stop()
+
+        ui.line("[+]: Download completed.")            
+
     @classmethod
     def save_index(
         cls,
@@ -383,9 +410,8 @@ class PixivBaseDownloader:
         index_file = work_dir / FETCH_CHECKPOINT_FILE
 
         # salva il record di dati
-        with open(index_file, "w", encoding="utf-8") as f:
-            json.dump(image_data.to_dict(), f)
-    
+        image_data.save(index_file)    
+
     @classmethod
     def rebuild_index(
         cls,
@@ -405,11 +431,9 @@ class PixivBaseDownloader:
 
             try:
 
-                with open(index_file, "r", encoding="utf-8") as f:
-                    image_data: PixivMetadata = PixivMetadata(
-                        data=json.load(f)
-                    )
-
+                image_data = PixivMetadata()
+                image_data.load(index_file)
+                
                 data.append(image_data)
 
                 found += 1
