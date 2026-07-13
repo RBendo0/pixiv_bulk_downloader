@@ -88,6 +88,7 @@ class PixivBaseDownloader:
                 
         data_len = len(data)
         d_width = len(str(data_len))
+        
         for idx, image_data in enumerate(data):
 
             try: 
@@ -331,15 +332,14 @@ class PixivBaseDownloader:
 
                 if not keep_checkpoint:
 
-                    # Elimina eventuale fetch checkpoint
-                    fetch_dir = (
-                        PixivPath(save_path)
-                        .work_dir(_id_)
+                    checkpoint_file = (
+                        work_dir
+                        / FETCH_CHECKPOINT_FILE
                     )
 
-                    if fetch_dir.exists():
+                    if checkpoint_file.exists():
 
-                        shutil.rmtree(fetch_dir)
+                        checkpoint_file.unlink()
 
                 # E' stata richiesta l'interruzione, esce dal ciclo
                 if user_abort.is_requested:
@@ -362,12 +362,25 @@ class PixivBaseDownloader:
         save_path: Path,
     ) -> None:
 
+        """
+        DEPRECATO: LA CARTELLA DI CHECKPOINT COINCIDE CON QUELL DELL'OPERA
         # Directory temporanea utilizzata per il checkpoint.
         # Viene eliminata dopo il completamento del download.        
         fetch_dir = cls.fetch_dir(save_path, image_data.id)
 
         # Crea percorso file indice
         index_file = fetch_dir / FETCH_CHECKPOINT_FILE
+        """
+
+        # Crea la cartella definitiva dell'opera.
+        work_dir = cls.work_dir(
+            save_path,
+            image_data.id,
+            image_data.path_title,
+        )
+
+        # Crea percorso file indice.
+        index_file = work_dir / FETCH_CHECKPOINT_FILE
 
         # salva il record di dati
         with open(index_file, "w", encoding="utf-8") as f:
@@ -386,45 +399,36 @@ class PixivBaseDownloader:
         if not save_path.exists():
             return data
 
-        for bucket_dir in save_path.iterdir():
+        for index_file in save_path.rglob(
+            FETCH_CHECKPOINT_FILE.name
+        ):
 
-            if not bucket_dir.is_dir():
-                continue
+            try:
 
-            for work_dir in bucket_dir.iterdir():
-
-                if not work_dir.is_dir():
-                    continue
-
-                index_file = work_dir / FETCH_CHECKPOINT_FILE
-
-                if not index_file.exists():
-                    continue
-
-                try:
-
-                    with open(index_file, "r", encoding="utf-8") as f:
-                        image_data: PixivMetadata = PixivMetadata(data=json.load(f))
-
-                    data.append(image_data)
-
-                    found += 1
-
-                    ui.line(
-                        f"[+]: Pending jobs found: {found}",
-                        history=False,
+                with open(index_file, "r", encoding="utf-8") as f:
+                    image_data: PixivMetadata = PixivMetadata(
+                        data=json.load(f)
                     )
 
-                except Exception as e:
+                data.append(image_data)
 
-                    e = PBDError.cast(e)
+                found += 1
 
-                    ui.line(
-                        f"[!]: Failed to load index: {index_file}: "
-                        f"{e.info()}: "
-                        f"{type(e).__name__}: {e}",
-                        ui.COLOR_ERROR,
-                    )
+                ui.line(
+                    f"[+]: Pending jobs found: {found}",
+                    history=False,
+                )
+
+            except Exception as e:
+
+                e = PBDError.cast(e)
+
+                ui.line(
+                    f"[!]: Failed to load index: {index_file}: "
+                    f"{e.info()}: "
+                    f"{type(e).__name__}: {e}",
+                    ui.COLOR_ERROR,
+                )
 
         data.sort(key=lambda x: x.id)
 

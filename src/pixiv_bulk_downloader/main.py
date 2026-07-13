@@ -3,7 +3,6 @@ from __future__ import annotations
 from .bookmarks import pbd
 from .errors import LoginFailedError
 from .pixiv_call_api import caapi
-from .tps import DownloadPool
 from .ui import ui
 
 
@@ -51,15 +50,9 @@ def main_interact() -> None:
 
 
 def _main() -> None:
-    try:
 
-        caapi.open_session()
-
-        main_interact()
-
-    finally:
-
-        DownloadPool.shutdown()
+    caapi.open_session()
+    main_interact()
     
 
 def main() -> None:

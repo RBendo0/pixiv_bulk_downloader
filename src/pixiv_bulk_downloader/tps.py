@@ -1,64 +1,86 @@
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Lock
-from typing import ParamSpec, TypeVar
+from threading import BoundedSemaphore
+from typing import Any, ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
-class DownloadPool:
+class ThreadPoolSystem:
 
-    MAX_WORKERS = 16
+    def __init__(
+        self,
+        *,
+        workers: int = 8,
+        queue: int = 8,
+        thread_name_prefix: str = "PBD-TPS",
+    ) -> None:
 
-    _lock = Lock()
-    _executor: ThreadPoolExecutor | None = None
+        workers = max(workers, 8)
+        queue = max(queue, 8)
 
-    @classmethod
-    def _get_executor(cls) -> ThreadPoolExecutor:
+        self.max_workers = workers
+        self.max_tasks = workers + queue
 
-        if cls._executor is not None:
-            return cls._executor
+        self._executor = ThreadPoolExecutor(
+            max_workers=workers,
+            thread_name_prefix=thread_name_prefix,
+        )
 
-        with cls._lock:
+        self._semaphore = BoundedSemaphore(
+            self.max_tasks
+        )
 
-            if cls._executor is None:
+    def _release_capacity(
+        self,
+        future: Future[Any],
+    ) -> None:
 
-                cls._executor = ThreadPoolExecutor(
-                    max_workers=cls.MAX_WORKERS,
-                    thread_name_prefix="PBD-Download",
-                )
+        self._semaphore.release()
 
-            return cls._executor
-
-    @classmethod
     def submit(
-        cls,
+        self,
         function: Callable[P, R],
         /,
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Future[R]:
 
-        executor = cls._get_executor()
+        self._semaphore.acquire()
 
-        return executor.submit(
-            function,
-            *args,
-            **kwargs,
+        try:
+
+            future = self._executor.submit(
+                function,
+                *args,
+                **kwargs,
+            )
+
+        except BaseException:
+
+            self._semaphore.release()
+
+            raise
+
+        future.add_done_callback(
+            self._release_capacity
         )
 
-    @classmethod
-    def shutdown(cls) -> None:
+        return future
 
-        with cls._lock:
+    def shutdown(
+        self,
+        *,
+        wait: bool = True,
+        cancel_futures: bool = False,
+    ) -> None:
 
-            executor = cls._executor
-            cls._executor = None
+        self._executor.shutdown(
+            wait=wait,
+            cancel_futures=cancel_futures,
+        )
 
-        if executor is not None:
 
-            executor.shutdown(
-                wait=True,
-                cancel_futures=False,
-            )
+# Alias della classe Thread Pool System.
+TPS = ThreadPoolSystem

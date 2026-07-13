@@ -5,7 +5,13 @@ import weakref
 import winsound
 from dataclasses import dataclass
 from shutil import get_terminal_size
-from threading import Event, Lock, Thread, get_ident
+from threading import (
+    Event,
+    Lock,
+    Thread,
+    current_thread,
+    get_ident,
+)
 
 import pwinput
 
@@ -399,17 +405,26 @@ class UI:
             text: str,
             *,
             main: bool = False,
+            show_thread_name: bool = True
         ) -> None:
             
             slot = 0 if main else cls._assign_slot()
 
             line_width = get_terminal_size().columns - 1
 
+            thread = current_thread()
+            thread_name = thread.name            
+
             header = (
-                "[+].{MAIN}: "
+                "[+].{MAIN}"
                 if main
-                else f"[+].{{T{slot:02d}}}: "
+                else f"[+].{{T{slot:02d}}}"
             )
+
+            if show_thread_name and not main:
+                header = header[:-1] + f":{thread_name}}}"
+
+            header += ": "
 
             line = (
                 f"{UI.COLOR_DEFAULT}"

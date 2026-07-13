@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -9,8 +10,10 @@ from .base import PixivBaseDownloader
 from .const import (
     BOOKMARKS_DIR,
     DISCARDED_CSV_PREFIX,
+    FETCH_CHECKPOINT_FILE,
     LISTS_DIR,
     NOT_FOUND_CSV_PREFIX,
+    WORK_METADATA_FILE,
 )
 from .errors import (
     ApiError,
@@ -249,14 +252,31 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             )
 
         urls_len = 0
-        
-        # Lista ID già scaricati
+
+        # Lista ID delle opere già scaricate completamente
         local_ids: set[str] = set()
 
-        # Se necessario scarica la lista di tutti i lavori già presenti in locale
         if mode in ("missing", "chrono"):
-            for folder in BOOKMARKS_DIR.rglob("*_*"):
-                local_ids.add(folder.name.split("_")[0])
+
+            for folder in BOOKMARKS_DIR.rglob("*"):
+
+                if not folder.is_dir():
+                    continue
+
+                metadata_file = folder / WORK_METADATA_FILE
+                checkpoint_file = folder / FETCH_CHECKPOINT_FILE
+
+                if (
+                    metadata_file.exists()
+                    and not checkpoint_file.exists()
+                ):
+
+                    with open(metadata_file, "r", encoding="utf-8") as f:
+                        image_data = PixivMetadata(
+                            data=json.load(f)
+                        )
+
+                    local_ids.add(str(image_data.id))
 
         # Imposta interruzione da utente
         user_abort = ui.InputPending(
