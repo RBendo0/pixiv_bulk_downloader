@@ -1,6 +1,13 @@
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
-from threading import BoundedSemaphore
+from concurrent.futures import (
+    Future,
+    ThreadPoolExecutor,
+    wait,
+)
+from threading import (
+    BoundedSemaphore,
+    Lock,
+)
 from typing import Any, ParamSpec, TypeVar
 
 P = ParamSpec("P")
@@ -31,6 +38,9 @@ class ThreadPoolSystem:
         self._semaphore = BoundedSemaphore(
             self.max_tasks
         )
+
+        self._futures: list[Future[Any]] = []
+        self._futures_lock = Lock()
 
     def _release_capacity(
         self,
@@ -63,11 +73,24 @@ class ThreadPoolSystem:
 
             raise
 
+        with self._futures_lock:
+            self._futures.append(future)
+
         future.add_done_callback(
             self._release_capacity
         )
 
         return future
+
+    def wait(self) -> None:
+
+        with self._futures_lock:
+            futures = self._futures.copy()
+
+        wait(futures)
+
+        with self._futures_lock:
+            self._futures.clear()
 
     def shutdown(
         self,

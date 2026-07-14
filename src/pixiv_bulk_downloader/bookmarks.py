@@ -275,19 +275,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     local_ids.add(str(image_data.id))
 
-        # Imposta interruzione da utente
-        user_abort = ui.InputPending(
-            valid="Q",
-            prompt="Press Q to interrupt the process."
-        )
+        # ATTENZIONE:
+        # default_abort è persistente.
+        # Chiamare sempre reset() prima del primo utilizzo.
+        cls.default_abort.reset()
 
-        # Stampe informative
-        ui.line("[i]: " + user_abort.prompt)
+        # Stampe informative.
+        ui.line("[i]: " + cls.default_abort.prompt)
 
         while next_qs is not None:
 
             # E' stata richiesta l'interruzione, esce dal ciclo
-            if user_abort.is_requested:
+            if cls.default_abort.is_requested:
 
                 ui.line("[!]: Fetching interrupted by user.")
 
@@ -386,14 +385,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             for idx, illust in enumerate(res_json["illusts"]):
 
                 # Rileva se è stata richiesta l'interruzione del processo
-                if user_abort.is_requested and not user_abort.is_notified:
+                if cls.default_abort.is_requested and not cls.default_abort.is_notified:
                     
                     ui.line(
                         "[!]: Operation interrupted. "
                         "Waiting for the current page to complete.",
                     )
 
-                    user_abort.set_notified()
+                    cls.default_abort.set_notified()
 
                 # Opera già presente nel database locale
                 if str(illust.id) in local_ids:
@@ -544,6 +543,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             # WHILE ... ELSE, eseguito solamente se il ciclo while 
             # termina senza interruzioni forzate quali break o return
             ui.line("[+]: Fetching completed.")
+
+        # Best practice:
+        # reset() finale consigliato ma non obbligatorio.
+        cls.default_abort.reset()
 
         return urls
 

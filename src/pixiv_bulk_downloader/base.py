@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from .const import (
@@ -16,8 +17,8 @@ from .errors import (
 from .metadata import PixivMetadata
 from .pbd_path import PixivPath
 from .pixiv_call_api import caapi
-from .ui import ui
 from .tps import TPS
+from .ui import ui
 
 
 class PixivBaseDownloader:
@@ -31,6 +32,11 @@ class PixivBaseDownloader:
 
     image_pool = TPS(
         thread_name_prefix="IMAGE",
+    )
+
+    default_abort = ui.InputPending(
+        valid="Q",
+        prompt="Press Q to interrupt the process.",
     )
 
     @classmethod
@@ -143,13 +149,48 @@ class PixivBaseDownloader:
 
             keep_checkpoint = True
 
-        # Versione che genera il nome estraendolo dall'url
+        media_futures = []
+
         for link in links:
 
+            # Rileva se è stata richiesta l'interruzione del processo
+            if cls.default_abort.is_requested and not cls.default_abort.is_notified:
 
-# CICLO DI MEDIA
+                ui.line(
+                    "[!]: Download interrupted by user. "
+                    "Waiting for completion of pending jobs. ",
+                )
 
+                cls.default_abort.set_notified()
 
+            basename = link.split("/")[-1].split("?")[0]
+
+            fname = (
+                UGOIRA_ZIP_FILE.name
+                if image_data.is_ugoira
+                else basename.split("_")[-1]
+            )
+
+            future = cls.image_pool.submit(
+                cls._download_media,
+                progress,
+                link,
+                work_dir,
+                fname,
+            )
+
+            media_futures.append(future)
+
+        media_completed = all(
+            future.result()
+            for future in media_futures
+        )
+
+        if not media_completed:
+
+            keep_checkpoint = True
+
+        # Qualcosa è andato storto: mantiene il checkpoint per un successivo tentativo di download
         if not keep_checkpoint:
 
             checkpoint_file = (
@@ -161,226 +202,184 @@ class PixivBaseDownloader:
 
                 checkpoint_file.unlink()
 
-        # E' stata richiesta l'interruzione, esce dal ciclo
-        if user_abort.is_requested:
-
-            ui.line("[!]: Download interrupted by user.")
-
-            break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     @classmethod
     def _download_media(
         cls,
-    ):
+        progress: str,
+        link: str,
+        work_dir: Path,
+        fname: str,
+    ) -> bool:
 
-                    basename = link.split("/")[-1].split("?")[0]
-                    fname = UGOIRA_ZIP_FILE.name if _is_ugoira_ else basename.split("_")[-1] 
+        while True:
 
-                    while True:
+            try:
 
-                        ui.line(
-                            f"{progress} | {fname}",
-                            history=False,
-                        )
+                ui.Renderer.write(
+                    f"{progress} | {fname}",
+                )
 
-                        try:
-                            
-                            caapi.download(
-                                link,
-                                path=str(work_dir),
-                                fname=fname,
-                            )                            
+                caapi.download(
+                    link,
+                    path=str(work_dir),
+                    fname=fname,
+                )                            
 
-                            break
+                return True
 
-                        except DownloadRateLimitError as e:
+            except DownloadRateLimitError:
 
-                            ui.line(
-                                " | ",
-                                home=False,
-                                clear=False,
-                                history=False,
-                            )
+                timer = rcc.RateLimitTimer()
 
-                            ui.line(
-                                f"[!]: {e.info()}: "
-                                f"{type(e).__name__}: {e} "
-                                f"(id: {_id_})",
-                                ui.COLOR_WARNING,
-                                home=False,
-                                clear=False,
-                            )
+                while not timer.expired:
 
-                            if rcc.wait_rate_limit() == rcc.Action.ABORT:
+                    ui.Renderer.write(
+                        f"{progress} | {fname} | "
+                        f"{ui.COLOR_WARNING}"
+                        f"Access limited by the service. "
+                        f"Retrying in {timer.remaining}s."
+                    )
 
-                                ui.line(
-                                    "[!]: Operation interrupted by user.",
-                                )
+                    time.sleep(1)
 
-                                return 
-                            
-                            ui.line(
-                                "[i]: Access limited by the service. Retrying in a moment."
-                            )
+                continue
 
-                            continue
+            except Exception as e:
 
-                        except Exception as e:
+                e = PBDError.cast(e)
 
-                            e = PBDError.cast(e)
+                """
+                ui.line(
+                    " | ",
+                    home=False,
+                    clear=False,
+                    history=False,
+                )
 
-                            ui.line(
-                                " | ",
-                                home=False,
-                                clear=False,
-                                history=False,
-                            )
+                ui.line(
+                    f"[!]: Download failed: "
+                    f"{e.info()}: "
+                    f"{type(e).__name__}: {e} "
+                    f"(checkpoint preserved)",
+                    ui.COLOR_ERROR,
+                    home=False,
+                    clear=False,
+                )
+                """
 
-                            ui.line(
-                                f"[!]: Download failed: "
-                                f"{e.info()}: "
-                                f"{type(e).__name__}: {e} "
-                                f"(checkpoint preserved)",
-                                ui.COLOR_ERROR,
-                                home=False,
-                                clear=False,
-                            )
+                ui.Renderer.write(
+                    f"{progress} | {fname} | "
+                    f"{ui.COLOR_ERROR}"
+                    f"Download failed: "
+                    f"{e.info()}: "
+                    f"{type(e).__name__}: {e} "
+                    f"(checkpoint preserved)",
+                )
 
-                            action = rcc.prompt_error_menu(
-                                {
-                                    "A": "Abort",
-                                    "R": "Retry",
-                                    "C": "Continue",
-                                },
-                                valid="ARC",
-                                default="C",
-                            )
-
-                            if action == rcc.Action.ABORT:
-                                ui.line("[!]: Operation interrupted by user.")
-                                return
-
-                            if action == rcc.Action.CONTINUE:
-                                keep_checkpoint = True
-                                break
-
-                            if action == rcc.Action.RETRY:
-                                ui.clear_lines(1)
-                                continue
-
-                    # Rileva se è stata richiesta l'interruzione del processo
-                    if user_abort.is_requested and not user_abort.is_notified:
-
-                        if not _is_ugoira_:
-                            ui.line(
-                                "[!]: Download interruption requested. "
-                                "Waiting for completion of the current artwork."
-                            )
-
-                        user_abort.set_notified()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                return False
 
     @classmethod
-    def download(cls, data: list[PixivMetadata], save_path: Path) -> None:
-                
+    def download(
+        cls,
+        data: list[PixivMetadata],
+        save_path: Path,
+    ) -> None:
+
         ui.line()
         ui.line("[+]: Downloading pending works...")
 
-        # Chiede conferma a procedere
+        # Chiede conferma a procedere.
         if not ui.confirm():
             return
 
-        # Imposta interruzione da utente
-        user_abort = ui.InputPending(
-            valid="Q",
-            prompt="Press Q to interrupt the process."
-        )
+        # ATTENZIONE:
+        # default_abort è persistente.
+        # Chiamare sempre reset() prima del primo utilizzo.
+        cls.default_abort.reset()
 
         # Stampe informative
-        ui.line("[i]: " + user_abort.prompt)
-                
+        ui.line("[i]: " + cls.default_abort.prompt)
+
         data_len = len(data)
         d_width = len(str(data_len))
-        
+
+        submit_failed = False
+
         for idx, image_data in enumerate(data):
 
+            if cls.default_abort.is_requested:
+                break
+
             progress = (
-                f"[+]: "
                 f"[{idx + 1:0{d_width}d}/"
                 f"{data_len:0{d_width}d}]: "
                 f"{image_data.title} "
                 f"(id: {image_data.id})"
             )
 
+            try:
 
-# CICLO DI OPERA
+                cls.artwork_pool.submit(
+                    cls._download_artwork,
+                    progress,
+                    image_data,
+                    save_path,
+                )
 
+            except Exception as e:
 
+                e = PBDError.cast(e)
 
+                ui.line(
+                    f"[!]: {progress} | ",
+                    history=False,
+                )
 
+                ui.line(
+                    f"Failed to submit artwork: "
+                    f"{e.info()}: "
+                    f"{type(e).__name__}: {e}",
+                    ui.COLOR_ERROR,
+                    home=False,
+                    clear=False,
+                )
 
+                ui.line(
+                    "[!]: Download interrupted. "
+                    "Waiting for pending jobs to complete.",
+                    ui.COLOR_WARNING,
+                )
 
+                submit_failed = True
+
+                break
+
+        # Attende tutte le opere già affidate al pool.
+        cls.artwork_pool.wait()
+        cls.image_pool.wait()
+
+        # Ferma il thread del renderer e ripulisce il pannello.
+        ui.Renderer.stop()
+
+        if submit_failed:
+
+            ui.line(
+                "[!]: Download terminated due to an internal error.",
+                ui.COLOR_ERROR,
+            )
+
+        elif cls.default_abort.is_requested:
+
+            ui.line(
+                "[!]: Download interrupted by user.",
+            )
 
         else:
 
-            ui.line("[+]: Download completed.")            
+            ui.line("[+]: Download completed.")
 
-        ui.Renderer.stop()
-
-        ui.line("[+]: Download completed.")            
+        # Reset finale consigliato ma non obbligatorio.
+        cls.default_abort.reset()            
 
     @classmethod
     def save_index(

@@ -2,83 +2,114 @@
 
 ## Stato del progetto
 
-L'architettura principale dell'applicazione è ormai stabilizzata.
+L'architettura principale del progetto è ormai stabilizzata.
 
-Completati:
+Milestone completate:
 
 * refactoring ERRS;
-* introduzione di `caapi` come unica interfaccia verso Pixiv;
+* introduzione di `caapi` come unico punto di accesso alle API Pixiv;
 * alias applicativi (`ui`, `rcc`, `caapi`, `pbd`);
 * refactoring dei downloader a metodi di classe;
-* completamento della coda persistente di `add_list_to_bookmarks()`;
-* introduzione del modulo `iofile` (`CsvFile`);
-* uniformazione dei workflow di recovery e delle control exception.
+* coda persistente di `add_list_to_bookmarks()`;
+* introduzione del modulo `iofile`;
+* uniformazione dei workflow di recovery;
+* completamento del Thread Pool System;
+* introduzione del renderer concorrente della console;
+* separazione del workflow di download in:
+  * `download()`;
+  * `_download_artwork()`;
+  * `_download_media()`.
 
-Completata l'infrastruttura del Thread Pool System (UI Renderer e DownloadPool).
-
-Le prossime attività riguardano il completamento del TPS, il consolidamento architetturale e il collaudo finale.
-
----
-
-# 1. Thread Pool System (TPS)
-
-Prima milestone della fase di parallelizzazione.
-
-Completati:
-
-* `UI.Renderer`;
-* `DownloadPool`;
-* infrastruttura concorrente;
-* ciclo di vita del pool;
-* renderer concorrente della console.
-
-Da completare:
-
-* `ArtWorker`;
-* integrazione del nuovo workflow di `download()`;
-* callback e raccolta dei `Future`;
-* gestione del completamento dell'opera;
-* collaudo del TPS.
+Da questo punto in avanti il lavoro si concentrerà principalmente sul consolidamento dell'architettura, sul collaudo e sulle rifiniture delle API interne.
 
 ---
 
-# 2. Riordino delle dipendenze
+# 1. Rifinitura della UI
 
-Completato il refactoring funzionale, procedere al consolidamento dei confini architetturali.
+Consolidare l'interfaccia della console rendendola più uniforme e semplice da utilizzare.
+
+Obiettivi:
+
+* evoluzione di `UI.Renderer.write()` verso un'interfaccia compatibile con `ui.line()`;
+* costruzione incrementale della riga;
+* gestione interna di colori e concatenazione;
+* eliminazione della manipolazione diretta delle sequenze ANSI da parte del chiamante.
+
+Revisione generale dell'API di output:
+
+* introduzione automatica dei marcatori di inizio riga (`[+]`, `[i]`, `[!]`, `[?]`);
+* il chiamante dovrà fornire solamente il testo del messaggio;
+* la UI costruirà automaticamente:
+  * marcatore;
+  * colore;
+  * formattazione;
+* uniformazione dell'interfaccia tra:
+  * `ui.line()`;
+  * `UI.Renderer.write()`;
+  * eventuali future routine di output.
+
+---
+
+# 2. Consolidamento delle dipendenze
+
+Stabilizzare definitivamente i confini architetturali.
 
 Verificare:
 
-* direzione delle dipendenze tra i moduli;
+* direzione delle dipendenze;
 * import inutilizzati;
 * responsabilità dei package;
 * eliminazione del codice obsoleto;
 * coerenza degli alias applicativi;
-* eventuale semplificazione di `__init__.py`;
 * separazione definitiva tra codice applicativo e librerie esterne.
 
-In particolare verificare che i moduli applicativi accedano a Pixiv esclusivamente tramite `caapi`.
+Obiettivo finale:
+
+* tutti gli accessi a Pixiv dovranno transitare esclusivamente attraverso `caapi`.
 
 ---
 
-# 3. Revisione delle librerie esterne
+# 3. Revisione del sistema di login
+
+Riorganizzare completamente il workflow di autenticazione.
+
+Argomenti da affrontare:
+
+* analisi del workflow attuale;
+* browser utilizzato da Playwright;
+* gestione del browser indipendente dal browser predefinito;
+* gestione del profilo utente;
+* revisione dell'acquisizione del token di autenticazione;
+* gestione del refresh del token;
+* apertura e riutilizzo della sessione API;
+* traduzione uniforme degli errori di login tramite ERRS;
+* eliminazione delle dipendenze inutili tra login e browser.
+
+---
+
+# 4. Revisione delle librerie esterne
 
 Riesaminare i punti di integrazione con:
 
+* `pixivpy3`;
 * `my_gppt`;
-* `pixivpy3`.
+* Playwright.
 
 Obiettivi:
 
 * ridurre l'accoppiamento;
 * uniformare la traduzione delle eccezioni;
 * valutare eventuali wrapper mancanti;
-* verificare che nessun dettaglio implementativo delle librerie si propaghi oltre gli strati di integrazione.
+* impedire che dettagli implementativi delle librerie si propaghino nel codice applicativo;
+* consolidare il blocco delle versioni delle dipendenze.
 
 ---
 
-# 4. Collaudo generale
+# 5. Collaudo generale
 
-Eseguire una verifica completa dei principali workflow:
+Verifica completa dei workflow principali.
+
+Test previsti:
 
 * login;
 * fetching;
@@ -90,16 +121,19 @@ Eseguire una verifica completa dei principali workflow:
 * rate limit API;
 * rate limit download;
 * recovery;
-* interruzione utente.
+* interruzione utente;
+* Thread Pool System;
+* renderer concorrente.
 
 ---
 
-# 5. Documentazione
+# 6. Documentazione
 
 Aggiornare progressivamente:
 
 * `DECISIONLOG`;
-* documentazione dell'architettura;
+* documentazione architetturale;
+* roadmap;
 * note progettuali;
 * commenti dei principali moduli.
 
@@ -107,9 +141,31 @@ Aggiornare progressivamente:
 
 # Valutazioni future
 
+Da rivalutare dopo il completamento del collaudo:
+
+* ottimizzazione delle prestazioni del download;
+* evoluzione di `caapi`;
+* eventuale revisione del sistema di sessione;
+* ulteriori semplificazioni dell'architettura interna;
+* nuove astrazioni nate dall'esperienza maturata durante lo sviluppo.# Valutazioni future
+
 Da riesaminare dopo il completamento del TPS:
 
 * ottimizzazione del download;
 * evoluzione di `caapi`;
 * eventuale revisione del sistema di sessione;
 * ulteriori semplificazioni dell'architettura interna.
+
+* evoluzione di `UI.Renderer.write()`:
+
+  * interfaccia compatibile con `ui.line()`;
+  * costruzione incrementale della riga;
+  * gestione interna di colori e concatenazione;
+  * eliminazione della manipolazione diretta delle sequenze ANSI da parte del chiamante.
+
+* revisione dell'API di output della UI:
+
+  * introduzione automatica dei marcatori di inizio riga (`[+]`, `[i]`, `[!]`, `[?]`);
+  * il chiamante dovrà fornire solo il testo del messaggio;
+  * la UI costruirà automaticamente il prefisso, il colore e la formattazione;
+  * uniformazione dell'interfaccia tra `ui.line()`, `UI.Renderer.write()` e le altre routine di output.

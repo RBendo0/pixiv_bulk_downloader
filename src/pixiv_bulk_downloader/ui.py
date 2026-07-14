@@ -165,7 +165,7 @@ class UI:
                     return c
 
                 cls.line(
-                    "[!]: Invalid selection.",
+                    "Invalid selection.",
                     cls.COLOR_ERROR,
                     home=False,
                     clear=False,

@@ -1,6 +1,7 @@
 import time
 from enum import Enum, auto
 from http.client import RemoteDisconnected
+from math import ceil
 
 from .timing import (
     MENU_TIMEOUT,
@@ -15,6 +16,37 @@ class RecoveryControl(Exception):
         ABORT = auto()
         RETRY = auto()
         CONTINUE = auto()
+
+    class RateLimitTimer:
+
+        def __init__(
+            self,
+            seconds: float = RATE_LIMIT_WAIT,
+        ) -> None:
+
+            self._deadline = (
+                time.monotonic()
+                + max(0.0, seconds)
+            )
+
+        @property
+        def remaining(self) -> int:
+
+            return max(
+                0,
+                ceil(
+                    self._deadline
+                    - time.monotonic()
+                ),
+            )
+
+        @property
+        def expired(self) -> bool:
+
+            return (
+                time.monotonic()
+                >= self._deadline
+            )        
 
     @classmethod
     def wait_rate_limit(
