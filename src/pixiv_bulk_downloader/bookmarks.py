@@ -402,8 +402,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                         ui.line(
                             f"[-]: Already downloaded: "
-                            f"{illust.title} "
-                            f"(id: {illust.id})",
+                            f"<ID:{illust.id}> "
+                            f"{illust.title}",
                             history=False,
                         )                    
                                             
@@ -447,8 +447,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         ui.line(
                             f"[+]: "
                             f"{counter}: "
-                            f"{illust.title} "
-                            f"(id: {illust.id}) [Indexed]",
+                            f"<ID:{illust.id}> "
+                            f"{illust.title} [Indexed]",
                             history=False,
                         )
 
@@ -465,8 +465,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                         ui.line(
                             f"[!]: {e.info()}: {e} | "
-                            f"Artwork: {illust.title} "
-                            f"(id: {illust.id})",
+                            f"Artwork: <ID:{illust.id}> "
+                            f"{illust.title}",
                             ui.COLOR_WARNING,
                             home=False,
                             clear=False,

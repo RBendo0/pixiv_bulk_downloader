@@ -119,6 +119,13 @@ class PixivBaseDownloader:
 
         try:
 
+            overflow = ui.Renderer.overflow_width(progress)
+
+            progress = ui.Renderer.truncate_width(
+                progress,
+                overflow,
+            )
+
             ui.Renderer.write(
                 progress,
                 main=True,
@@ -151,8 +158,14 @@ class PixivBaseDownloader:
 
         media_futures = []
 
-        for link in links:
+        media_total = len(links)
+        media_width = len(str(media_total))
 
+        for media_idx, link in enumerate(
+            links,
+            start=1,
+        ):
+            
             # Rileva se è stata richiesta l'interruzione del processo
             if cls.default_abort.is_requested and not cls.default_abort.is_notified:
 
@@ -163,6 +176,12 @@ class PixivBaseDownloader:
 
                 cls.default_abort.set_notified()
 
+            media_prefix = (
+                f" | "
+                f"[{media_idx:0{media_width}d}/"
+                f"{media_total:0{media_width}d}]:"
+            )
+
             basename = link.split("/")[-1].split("?")[0]
 
             fname = (
@@ -171,9 +190,18 @@ class PixivBaseDownloader:
                 else basename.split("_")[-1]
             )
 
+            overflow = ui.Renderer.overflow_width(
+                progress + media_prefix + " " + fname
+            )
+
+            media_progress = ui.Renderer.truncate_width(
+                progress,
+                overflow,
+            ) + media_prefix
+
             future = cls.image_pool.submit(
                 cls._download_media,
-                progress,
+                media_progress,
                 link,
                 work_dir,
                 fname,
@@ -216,7 +244,7 @@ class PixivBaseDownloader:
             try:
 
                 ui.Renderer.write(
-                    f"{progress} | {fname}",
+                    f"{progress} {fname}",
                 )
 
                 caapi.download(
@@ -233,11 +261,24 @@ class PixivBaseDownloader:
 
                 while not timer.expired:
 
-                    ui.Renderer.write(
-                        f"{progress} | {fname} | "
+                    status = (
+                        f" | "
                         f"{ui.COLOR_WARNING}"
                         f"Access limited by the service. "
                         f"Retrying in {timer.remaining}s."
+                    )
+
+                    overflow = ui.Renderer.overflow_width(
+                        progress + " " + fname + status
+                    )
+
+                    display_progress = ui.Renderer.truncate_width(
+                        progress,
+                        overflow,
+                    )                    
+
+                    ui.Renderer.write(
+                        f"{display_progress} {fname}{status}"
                     )
 
                     time.sleep(1)
@@ -248,32 +289,26 @@ class PixivBaseDownloader:
 
                 e = PBDError.cast(e)
 
-                """
-                ui.line(
-                    " | ",
-                    home=False,
-                    clear=False,
-                    history=False,
-                )
-
-                ui.line(
-                    f"[!]: Download failed: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e} "
-                    f"(checkpoint preserved)",
-                    ui.COLOR_ERROR,
-                    home=False,
-                    clear=False,
-                )
-                """
-
-                ui.Renderer.write(
-                    f"{progress} | {fname} | "
+                status = (
+                    f" | "
                     f"{ui.COLOR_ERROR}"
                     f"Download failed: "
                     f"{e.info()}: "
                     f"{type(e).__name__}: {e} "
-                    f"(checkpoint preserved)",
+                    f"(checkpoint preserved)"
+                )
+
+                overflow = ui.Renderer.overflow_width(
+                    progress + " " + fname + status
+                )
+
+                display_progress = ui.Renderer.truncate_width(
+                    progress,
+                    overflow,
+                )                    
+
+                ui.Renderer.write(
+                    f"{display_progress} {fname}{status}"
                 )
 
                 return False
@@ -313,8 +348,8 @@ class PixivBaseDownloader:
             progress = (
                 f"[{idx + 1:0{d_width}d}/"
                 f"{data_len:0{d_width}d}]: "
-                f"{image_data.title} "
-                f"(id: {image_data.id})"
+                f"<ID:{image_data.id}> "
+                f"{image_data.title}"
             )
 
             try:

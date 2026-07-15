@@ -14,6 +14,7 @@ from threading import (
 )
 
 import pwinput
+from wcwidth import wcswidth
 
 
 class UI:
@@ -333,7 +334,7 @@ class UI:
 
             self.requested = False
             self.notified = False
-            
+
     class Renderer:
 
         ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -346,6 +347,14 @@ class UI:
 
         _thread_slots: dict[int, int] = {}
         _slots: list[str] = [""]
+
+        @classmethod
+        def _terminal_width(cls) -> int:
+
+            return max(
+                1,
+                get_terminal_size().columns - 5,
+            )
 
         @classmethod
         def _assign_slot(cls) -> int:
@@ -424,14 +433,136 @@ class UI:
                 cls._thread_slots.clear()
                 cls._slots = [""]
                 cls._stop_event.clear()
+                cls._update_event.clear()
+
+        @classmethod
+        def _build_line(
+            cls,
+            text: str,
+            *,
+            main: bool = False,
+            show_thread_name: bool = True,
+        ) -> str:
+
+            slot = 0 if main else cls._assign_slot()
+
+            header = (
+                "[+].{MAIN}"
+                if main
+                else f"[+].{{T{slot:02d}}}"
+            )
+
+            if show_thread_name and not main:
+                header = (
+                    header[:-1]
+                    + f":{current_thread().name}}}"
+                )
+
+            return (
+                f"{UI.COLOR_DEFAULT}"
+                f"{header}: "
+                f"{text}"
+                f"{UI.COLOR_RESET}"
+            )
+        
+        @classmethod
+        def _display_width(
+            cls,
+            text: str,
+        ) -> int:
+
+            plain_text = cls.ANSI_ESCAPE.sub("", text)
+
+            return wcswidth(plain_text)        
+
+        @classmethod
+        def overflow_width(
+            cls,
+            text: str,
+            *,
+            main: bool = False,
+            show_thread_name: bool = True,
+        ) -> int:
+
+            line = cls._build_line(
+                text,
+                main=main,
+                show_thread_name=show_thread_name,
+            )
+
+            return max(
+                0,
+                cls._display_width(line)
+                - cls._terminal_width(),
+            )
+
+        @classmethod
+        def truncate_width(
+            cls,
+            text: str,
+            remove_width: int,
+        ) -> str:
+
+            if remove_width <= 0:
+                return text
+
+            target_width = cls._display_width(text) - remove_width
+
+            if target_width <= 0:
+                return ""
+
+            ellipsis = "…"
+            content_width = target_width - wcswidth(ellipsis)
+
+            result = []
+            visible_text = ""
+            truncated = False
+            index = 0
+
+            while index < len(text):
+
+                ansi_match = cls.ANSI_ESCAPE.match(
+                    text,
+                    index,
+                )
+
+                if ansi_match:
+
+                    result.append(
+                        ansi_match.group()
+                    )
+
+                    index = ansi_match.end()
+                    continue
+
+                char = text[index]
+                index += 1
+
+                if truncated:
+                    continue
+
+                candidate = visible_text + char
+                candidate_width = wcswidth(candidate)
+
+                if candidate_width < 0:
+                    continue
+
+                if candidate_width > content_width:
+
+                    result.append(ellipsis)
+                    truncated = True
+                    continue
+
+                result.append(char)
+                visible_text = candidate
+
+            return "".join(result)
 
         # text deve contenere la riga completa già pronta per il rendering.
         #
         # Il Renderer aggiunge esclusivamente l'intestazione dello slot:
         #
         #     [+].{T00}:
-        #
-        # e il padding finale fino a LINE_WIDTH.
         #
         # Tutta la restante formattazione è responsabilità del chiamante.
         #
@@ -455,43 +586,26 @@ class UI:
             
             slot = 0 if main else cls._assign_slot()
 
-            line_width = get_terminal_size().columns - 1
+            line = cls._build_line(text, main=main, show_thread_name=show_thread_name)
 
-            thread = current_thread()
-            thread_name = thread.name            
-
-            header = (
-                "[+].{MAIN}"
-                if main
-                else f"[+].{{T{slot:02d}}}"
-            )
-
-            if show_thread_name and not main:
-                header = header[:-1] + f":{thread_name}}}"
-
-            header += ": "
-
-            line = (
-                f"{UI.COLOR_DEFAULT}"
-                f"{header}"
-                f"{text}"
-                f"{UI.COLOR_RESET}"
-            )
-
-            visible_length = len(
-                cls.ANSI_ESCAPE.sub("", line)
-            )
-
-            padding = " " * max(
+            overflow = max(
                 0,
-                line_width - visible_length,
+                cls._display_width(line)
+                - cls._terminal_width(),
             )
+
+            if overflow:
+
+                line = cls.truncate_width(
+                    line,
+                    overflow,
+                )
 
             with cls._lock:
 
                 cls._slots[slot] = (
                     line
-                    + padding
+                    + "\033[K"
                 )
 
             cls._start()
@@ -541,7 +655,7 @@ class UI:
                     end="",
                     flush=True,
                 )
-
+    
 
 # Alias della classe di interfaccia grafica
 ui = UI
