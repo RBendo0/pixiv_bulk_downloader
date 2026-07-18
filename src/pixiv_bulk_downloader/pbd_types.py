@@ -8,6 +8,10 @@ from pixivpy3.utils import JsonDict
 type JsonCollection = dict[str, JsonDict]
 
 
+class CommandLineOptions(TypedDict):
+    root: Path | None
+
+
 class LoginCred(TypedDict):
     pixiv_id: str
     password: str

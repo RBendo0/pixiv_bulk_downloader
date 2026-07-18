@@ -5,7 +5,6 @@ from pathlib import Path
 
 from .const import (
     FETCH_CHECKPOINT_FILE,
-    PBD_ROOT,
     UGOIRA_ZIP_FILE,
     WORK_METADATA_FILE,
 )
@@ -22,9 +21,6 @@ from .ui import ui
 
 
 class PixivBaseDownloader:
-
-    # Mantenuto per eventuali modifiche future. 
-    save_dir = PBD_ROOT
 
     artwork_pool = TPS(
         thread_name_prefix="ARTWORK",
@@ -495,11 +491,12 @@ class PixivBaseDownloader:
     @classmethod
     def resume_pending_jobs(
         cls,
+        save_path: Path,
     ) -> None:
 
         ui.line("[+]: Rebuilding pending jobs index...")
 
-        pending = cls.rebuild_index(cls.save_dir)
+        pending = cls.rebuild_index(save_path)
 
         if not pending:
             ui.line(
@@ -514,5 +511,5 @@ class PixivBaseDownloader:
 
         cls.download(
             pending,
-            cls.save_dir,
+            save_path,
         )

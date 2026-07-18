@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from pixivpy3.utils import JsonDict
 
 from .base import PixivBaseDownloader
 from .const import (
-    BOOKMARKS_DIR,
     DISCARDED_CSV_PREFIX,
     FETCH_CHECKPOINT_FILE,
-    LISTS_DIR,
     NOT_FOUND_CSV_PREFIX,
     WORK_METADATA_FILE,
 )
@@ -94,6 +93,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
     @classmethod
     def add_list_interact(
         cls,
+        lists_path: Path,
     ) -> AddListOptions | None:
 
         privacy_map: dict[str, BookmarkPrivacy] = {
@@ -107,7 +107,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         source_files = sorted(
             (
                 file
-                for file in LISTS_DIR.glob("*.csv")
+                for file in lists_path.glob("*.csv")
                 if not file.name.startswith(
                     (
                         NOT_FOUND_CSV_PREFIX,
@@ -193,7 +193,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         }
 
     @classmethod
-    def download_bookmarks(cls) -> None:
+    def download_bookmarks(
+        cls,
+        bookmarks_path: Path,
+    ) -> None:
 
         # Rileva opzioni utente
         options: BookmarkOptions | None = cls.main_download_interact()
@@ -202,17 +205,24 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             return
 
         # Scansiona e crea la lista di opere
-        bookmarked_data = cls.retrieve_bookmarks(**options)
+        bookmarked_data = cls.retrieve_bookmarks(
+            bookmarks_path, 
+            **options,
+        )
 
         if not bookmarked_data:
             return
 
         # Scarica le opere
-        cls.download(bookmarked_data, BOOKMARKS_DIR)
+        cls.download(
+            bookmarked_data,
+            bookmarks_path
+        )
 
     @classmethod
     def retrieve_bookmarks(
         cls,
+        bookmarks_path: Path,
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
     ) -> list[PixivMetadata] | None:
@@ -257,7 +267,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         if mode in ("missing", "chrono"):
 
-            for folder in BOOKMARKS_DIR.rglob("*"):
+            for folder in bookmarks_path.rglob("*"):
 
                 if not folder.is_dir():
                     continue
@@ -270,8 +280,13 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     and not checkpoint_file.exists()
                 ):
 
-                    image_data = PixivMetadata()
-                    image_data.load(metadata_file)
+                    try:
+
+                        image_data = PixivMetadata()
+                        image_data.load(metadata_file)
+
+                    except Exception:
+                        continue
 
                     local_ids.add(str(image_data.id))
 
@@ -435,7 +450,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 ugoira_data,
                             )
 
-                        cls.save_index(image_data, BOOKMARKS_DIR)
+                        cls.save_index(image_data, bookmarks_path)
                         urls.append(image_data)
 
                         counter = (
@@ -552,9 +567,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
     # Aggiunge nuovi bookmarks all'account, a partire da una lista di url in un file .txt
     @classmethod
-    def add_list_to_bookmarks(cls) -> None:
+    def add_list_to_bookmarks(
+        cls,
+        lists_path: Path,
+    ) -> None:
 
-        options = cls.add_list_interact()
+        options = cls.add_list_interact(lists_path)
 
         if not options:
             return
@@ -588,12 +606,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 lines = source_csv.read_lines()
 
                 not_found_file = (
-                    LISTS_DIR
+                    lists_path
                     / f"{NOT_FOUND_CSV_PREFIX}{source_file.name}"
                 )
 
                 discarded_file = (
-                    LISTS_DIR
+                    lists_path
                     / f"{DISCARDED_CSV_PREFIX}{source_file.name}"
                 )
 

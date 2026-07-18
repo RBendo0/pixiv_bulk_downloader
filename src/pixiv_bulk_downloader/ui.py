@@ -1,8 +1,10 @@
+import ctypes
 import msvcrt
 import re
 import time
 import weakref
 import winsound
+from ctypes import wintypes
 from dataclasses import dataclass
 from shutil import get_terminal_size
 from threading import (
@@ -24,6 +26,8 @@ class UI:
     COLOR_WARNING = "\033[33m"    # giallo
     COLOR_ERROR = "\033[31m"      # rosso
 
+    COLOR_INPUT = "\033[90m"      # grigio scuro
+    
     COLOR_RESET = "\033[0m"       # nero
 
     _console_lock = Lock()
@@ -229,6 +233,132 @@ class UI:
             cls.line("")
 
             return default
+
+    @classmethod
+    def input_string(
+        cls,
+        prompt: str = "",
+        default: str = "",
+    ) -> str:
+
+        if not prompt:
+            prompt = "Input"
+
+        if default:
+
+            class CHAR_UNION(ctypes.Union):
+
+                _fields_ = [
+                    ("UnicodeChar", wintypes.WCHAR),
+                    ("AsciiChar", wintypes.CHAR),
+                ]
+
+            class KEY_EVENT_RECORD(ctypes.Structure):
+
+                _anonymous_ = ("char",)
+
+                _fields_ = [
+                    ("bKeyDown", wintypes.BOOL),
+                    ("wRepeatCount", wintypes.WORD),
+                    ("wVirtualKeyCode", wintypes.WORD),
+                    ("wVirtualScanCode", wintypes.WORD),
+                    ("char", CHAR_UNION),
+                    ("dwControlKeyState", wintypes.DWORD),
+                ]
+
+            class EVENT_UNION(ctypes.Union):
+
+                _fields_ = [
+                    ("KeyEvent", KEY_EVENT_RECORD),
+                ]
+
+            class INPUT_RECORD(ctypes.Structure):
+
+                _anonymous_ = ("event",)
+
+                _fields_ = [
+                    ("EventType", wintypes.WORD),
+                    ("event", EVENT_UNION),
+                ]
+
+            kernel32 = ctypes.WinDLL(
+                "kernel32",
+                use_last_error=True,
+            )
+
+            kernel32.GetStdHandle.argtypes = [
+                wintypes.DWORD,
+            ]
+
+            kernel32.GetStdHandle.restype = (
+                wintypes.HANDLE
+            )
+
+            kernel32.WriteConsoleInputW.argtypes = [
+                wintypes.HANDLE,
+                ctypes.POINTER(INPUT_RECORD),
+                wintypes.DWORD,
+                ctypes.POINTER(wintypes.DWORD),
+            ]
+
+            kernel32.WriteConsoleInputW.restype = (
+                wintypes.BOOL
+            )
+
+            STD_INPUT_HANDLE = -10
+            KEY_EVENT = 0x0001
+
+            console_input = kernel32.GetStdHandle(
+                STD_INPUT_HANDLE,
+            )
+
+            records = (
+                INPUT_RECORD * len(default)
+            )()
+
+            for idx, char in enumerate(default):
+
+                records[idx].EventType = KEY_EVENT
+
+                records[idx].KeyEvent = KEY_EVENT_RECORD(
+                    bKeyDown=True,
+                    wRepeatCount=1,
+                    wVirtualKeyCode=0,
+                    wVirtualScanCode=0,
+                    UnicodeChar=char,
+                    dwControlKeyState=0,
+                )
+
+            written = wintypes.DWORD()
+
+            success = kernel32.WriteConsoleInputW(
+                console_input,
+                records,
+                len(records),
+                ctypes.byref(written),
+            )
+
+            if not success:
+
+                error_code = ctypes.get_last_error()
+
+                raise OSError(
+                    error_code,
+                    "Failed to initialize console input.",
+                )
+
+        with cls._console_lock:
+
+            value = input(
+                f"\r\033[K"
+                f"{cls.COLOR_DEFAULT}"
+                f"{prompt}: "
+                f"{cls.COLOR_INPUT}"
+            )
+
+        print(cls.COLOR_RESET, end="")
+
+        return value
 
     @classmethod
     def confirm(cls) -> bool:

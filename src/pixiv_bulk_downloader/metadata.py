@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 from pixivpy3.utils import JsonDict
 
+from .iofile import JsonFile
 from .pbd_types import JsonCollection
 
 
@@ -54,30 +54,16 @@ class PixivMetadata:
         path: Path,
     ) -> None:
 
-        with path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-
-            json.dump(
-                self._collection,
-                file,
-                indent=4,
-                ensure_ascii=False,
-                default=str,
-            )
+        JsonFile(path).save(
+            self._collection
+        )
 
     def load(
         self,
         path: Path,
     ) -> None:
 
-        with path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-
-            self._collection = json.load(file)
+        self._collection = JsonFile(path).load()
 
     @property
     def id(self) -> int:

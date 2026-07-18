@@ -1,24 +1,23 @@
 from pathlib import Path
 from typing import Final
 
-PBD_ROOT: Final[Path] = Path.home() / "pbd"
+DEFAULT_ROOT: Final[Path] = Path.home() / "pbd"
 
-BOOKMARKS_DIR: Final[Path] = PBD_ROOT / "bookmarks"
-
-LISTS_DIR: Final[Path] = PBD_ROOT / "lists"
+CONF_DIR: Final[Path] = Path("conf")
+BOOKMARKS_DIR: Final[Path] = Path("bookmarks")
+LISTS_DIR: Final[Path] = Path("lists")
 
 NOT_FOUND_CSV_PREFIX: Final[str] = "not_found_"
-
 DISCARDED_CSV_PREFIX: Final[str] = "discarded_"
 
-STATE_DIR: Final[Path] = PBD_ROOT / "state"
-
-DOWNLOADED_IDS_FILE: Final[Path] = STATE_DIR / "downloaded_ids.txt"
+CONFIG_FILE = Path("config.json")
 
 FETCH_CHECKPOINT_FILE: Final[Path] = Path("fetch.json")
-
 WORK_METADATA_FILE: Final[Path] = Path("metadata.json")
-
 UGOIRA_METADATA_FILE: Final[Path] = Path("ugoira.json")
-
 UGOIRA_ZIP_FILE: Final[Path] = Path("ugoira.zip")
+
+
+
+
+

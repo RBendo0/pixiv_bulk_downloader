@@ -1,11 +1,80 @@
 from __future__ import annotations
 
 import csv
+import json
+import shutil
 from pathlib import Path
 from typing import Any
 
 
-class CsvFile:
+class BaseFile:
+
+    def __init__(
+        self,
+        path: Path | str,
+    ) -> None:
+
+        self._path = Path(path)
+
+    def backup(self) -> None:
+
+        backup_path = self._path.with_suffix(
+            self._path.suffix + ".bak"
+        )
+
+        shutil.copy2(
+            self._path,
+            backup_path,
+        )
+
+    def restore(self) -> None:
+
+        backup_path = self._path.with_suffix(
+            self._path.suffix + ".bak"
+        )
+
+        shutil.copy2(
+            backup_path,
+            self._path,
+        )        
+
+
+class JsonFile(BaseFile):
+
+    def load(self) -> Any:
+
+        with self._path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+
+            return json.load(file)
+
+    def save(
+        self,
+        data: Any,
+    ) -> None:
+
+        self._path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        with self._path.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+
+            json.dump(
+                data,
+                file,
+                indent=4,
+                ensure_ascii=False,
+                default=str,
+            )
+
+
+class CsvFile(BaseFile):
 
     def __init__(
         self,
@@ -13,17 +82,17 @@ class CsvFile:
         purge: bool = False,
     ) -> None:
 
-        self.path = Path(path)
+        super().__init__(path)
 
         if purge:
             self._purge_blank_lines()
 
     def read_lines(self) -> list[str]:
 
-        if not self.path.exists():
+        if not self._path.exists():
             return []
 
-        return self.path.read_text(
+        return self._path.read_text(
             encoding="utf-8",
         ).splitlines()
 
@@ -32,7 +101,7 @@ class CsvFile:
         *columns: Any,
     ) -> None:
 
-        with self.path.open(
+        with self._path.open(
             "a",
             encoding="utf-8",
             newline="",
@@ -63,7 +132,7 @@ class CsvFile:
             if line.strip()
         ]
 
-        with self.path.open(
+        with self._path.open(
             "w",
             encoding="utf-8",
             newline="",
@@ -76,10 +145,10 @@ class CsvFile:
 
     def _truncate_last(self) -> bool:
 
-        if not self.path.exists():
+        if not self._path.exists():
             return False
 
-        with self.path.open("rb+") as file:
+        with self._path.open("rb+") as file:
 
             file.seek(0, 2)
             size = file.tell()
