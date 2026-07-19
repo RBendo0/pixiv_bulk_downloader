@@ -28,7 +28,22 @@ L'architettura principale del progetto può ormai considerarsi stabilizzata.
   * eliminazione del padding tramite `ESC[K`;
   * troncamento semantico nei downloader;
   * nuova formattazione delle righe di progresso;
-* introduzione del sistema di configurazione persistente del percorso dell'archivio, con supporto al cambio dinamico del percorso, backup automatico del file di configurazione e ripristino in caso di errore.
+* introduzione del sistema di configurazione persistente del percorso dell'archivio:
+
+  * distinzione tra root statica dell'applicazione e root dinamica scelta dall'utente;
+  * mantenimento del file di configurazione nella root statica;
+  * supporto all'argomento CLI dedicato alla root;
+  * configurazione interattiva del percorso dal menu principale;
+  * salvataggio persistente della root scelta dall'utente;
+  * cambio dinamico della root durante l'esecuzione;
+  * normalizzazione automatica del percorso con aggiunta della directory finale `pbd`, quando assente;
+  * ricostruzione dei percorsi dipendenti dopo ogni modifica della configurazione;
+  * risoluzione dei percorsi al momento dell'esecuzione delle azioni del menu;
+  * creazione automatica della directory `lists` destinata ai file di URL;
+  * backup automatico del file di configurazione;
+  * ripristino del file di configurazione in caso di errore;
+  * gestione tollerante dell'assenza del file sorgente o del relativo backup;
+  * collaudo completato con esito positivo.
 
 Da questo punto in avanti il lavoro sarà concentrato soprattutto sul consolidamento, sul collaudo finale e sulla rifinitura dell'architettura.
 
@@ -67,7 +82,8 @@ Argomenti:
 * refresh del token;
 * riutilizzo della sessione;
 * traduzione uniforme degli errori tramite ERRS;
-* revisione delle dipendenze con `my_gppt`.
+* revisione delle dipendenze con `my_gppt`;
+* verifica dell'attuale errore di autenticazione restituito da `my_gppt`.
 
 ---
 
@@ -91,12 +107,11 @@ Obiettivi:
 
 # 4. Collaudo generale
 
-Verifica completa dei workflow applicativi.
+Verifica completa dei workflow applicativi ancora da validare nel loro insieme.
 
 Test previsti:
 
 * login;
-* configurazione del percorso dell'archivio;
 * retrieve bookmarks;
 * download;
 * resume pending jobs;
@@ -110,9 +125,18 @@ Test previsti:
 * Thread Pool System;
 * renderer concorrente.
 
+### Collaudi completati
+
+* configurazione persistente del percorso dell'archivio;
+* cambio dinamico della root durante l'esecuzione;
+* rilettura della configurazione salvata;
+* normalizzazione automatica del suffisso `pbd`;
+* download nella root configurata;
+* creazione automatica della directory `lists`.
+
 ---
 
-# 5. Documentazione
+# 5. Documentazione e reportistica
 
 Aggiornare progressivamente:
 
@@ -120,11 +144,24 @@ Aggiornare progressivamente:
 * documentazione architetturale;
 * roadmap;
 * note progettuali;
-* commenti dei principali moduli.
+* commenti dei principali moduli, privilegiando la motivazione delle decisioni rispetto alla sola descrizione del funzionamento;
+* riepiloghi delle milestone completate.
+
+La manutenzione della documentazione e della reportistica accompagna lo sviluppo e non costituisce una fase separata da rinviare alla conclusione del progetto.
 
 ---
 
-# 6. Evoluzioni future
+# 6. Pubblicazione e verifica del repository
+
+Dopo il consolidamento della configurazione e della gestione degli argomenti CLI:
+
+* verificare il repository online per individuare eventuali segnali di utilizzo o download dell'applicazione;
+* aggiornare le informazioni pubbliche sullo stato del progetto;
+* aggiungere un avviso che chiarisca lo stato di sviluppo e gli eventuali limiti della versione corrente.
+
+---
+
+# 7. Evoluzioni future
 
 Da rivalutare dopo il completamento del collaudo.
 
@@ -142,6 +179,17 @@ Da rivalutare dopo il completamento del collaudo.
 * evoluzione di `caapi`;
 * eventuale revisione del sistema di sessione;
 * nuove astrazioni nate dall'esperienza maturata durante lo sviluppo.
+
+## Affidabilità dei dati
+
+* introduzione di copie di backup automatiche dei file operativi usati dall'applicazione, comprese le liste di URL impiegate per aggiungere opere ai preferiti;
+* definizione delle politiche di rotazione, conservazione e ripristino dei backup.
+
+## Ugoira
+
+* conversione degli archivi ZIP delle ugoira in animazioni;
+* definizione del formato di destinazione e della strategia di conversione;
+* integrazione della conversione nel workflow senza compromettere il salvataggio dei dati originali.
 
 ## Prestazioni
 

@@ -115,14 +115,17 @@ class PixivBaseDownloader:
 
         try:
 
-            overflow = ui.Renderer.overflow_width(progress)
+            overflow = ui.Renderer.in_thread_overflow_width(
+                progress, 
+                main=True,
+            )
 
             progress = ui.Renderer.truncate_width(
                 progress,
                 overflow,
             )
 
-            ui.Renderer.write(
+            ui.Renderer.in_thread_write(
                 progress,
                 main=True,
             )
@@ -173,6 +176,7 @@ class PixivBaseDownloader:
                 cls.default_abort.set_notified()
 
             media_prefix = (
+                f"{ui.COLOR_DEFAULT}"
                 f" | "
                 f"[{media_idx:0{media_width}d}/"
                 f"{media_total:0{media_width}d}]:"
@@ -185,19 +189,11 @@ class PixivBaseDownloader:
                 if image_data.is_ugoira
                 else basename.split("_")[-1]
             )
-
-            overflow = ui.Renderer.overflow_width(
-                progress + media_prefix + " " + fname
-            )
-
-            media_progress = ui.Renderer.truncate_width(
-                progress,
-                overflow,
-            ) + media_prefix
-
+            
             future = cls.image_pool.submit(
                 cls._download_media,
-                media_progress,
+                progress,
+                media_prefix,
                 link,
                 work_dir,
                 fname,
@@ -230,6 +226,7 @@ class PixivBaseDownloader:
     def _download_media(
         cls,
         progress: str,
+        media_prefix: str,
         link: str,
         work_dir: Path,
         fname: str,
@@ -239,8 +236,19 @@ class PixivBaseDownloader:
 
             try:
 
-                ui.Renderer.write(
-                    f"{progress} {fname}",
+                overflow = ui.Renderer.in_thread_overflow_width(
+                    progress + media_prefix + " " + fname
+                )
+
+                progress = ui.Renderer.truncate_width(
+                    progress,
+                    overflow,
+                ) + media_prefix
+
+                ui.Renderer.in_thread_write(
+                    f"{progress} "
+                    f"{ui.COLOR_SUCCESS}"
+                    F"{fname}",
                 )
 
                 caapi.download(
@@ -264,7 +272,7 @@ class PixivBaseDownloader:
                         f"Retrying in {timer.remaining}s."
                     )
 
-                    overflow = ui.Renderer.overflow_width(
+                    overflow = ui.Renderer.in_thread_overflow_width(
                         progress + " " + fname + status
                     )
 
@@ -273,7 +281,7 @@ class PixivBaseDownloader:
                         overflow,
                     )                    
 
-                    ui.Renderer.write(
+                    ui.Renderer.in_thread_write(
                         f"{display_progress} {fname}{status}"
                     )
 
@@ -294,7 +302,7 @@ class PixivBaseDownloader:
                     f"(checkpoint preserved)"
                 )
 
-                overflow = ui.Renderer.overflow_width(
+                overflow = ui.Renderer.in_thread_overflow_width(
                     progress + " " + fname + status
                 )
 
@@ -303,7 +311,7 @@ class PixivBaseDownloader:
                     overflow,
                 )                    
 
-                ui.Renderer.write(
+                ui.Renderer.in_thread_write(
                     f"{display_progress} {fname}{status}"
                 )
 
@@ -344,8 +352,10 @@ class PixivBaseDownloader:
             progress = (
                 f"[{idx + 1:0{d_width}d}/"
                 f"{data_len:0{d_width}d}]: "
+                f"{ui.COLOR_INPUT}"
                 f"<ID:{image_data.id}> "
                 f"{image_data.title}"
+                f"{ui.COLOR_DEFAULT}"
             )
 
             try:

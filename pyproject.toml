@@ -49,7 +49,7 @@ requires = [
 ]
 
 [tool.poetry.scripts]
-pbd = "pixiv_bulk_downloader.main:main"
+pbd-launch = "pixiv_bulk_downloader.main:main"
 
 [tool.black]
 target-version = ["py312"]

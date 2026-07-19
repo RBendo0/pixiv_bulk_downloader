@@ -18,6 +18,9 @@ class BaseFile:
 
     def backup(self) -> None:
 
+        if not self._path.exists():
+            return
+
         backup_path = self._path.with_suffix(
             self._path.suffix + ".bak"
         )
@@ -32,6 +35,9 @@ class BaseFile:
         backup_path = self._path.with_suffix(
             self._path.suffix + ".bak"
         )
+
+        if not backup_path.exists():
+            return
 
         shutil.copy2(
             backup_path,

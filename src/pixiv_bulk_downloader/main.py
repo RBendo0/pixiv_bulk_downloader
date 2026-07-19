@@ -32,13 +32,10 @@ def parse_args() -> CommandLineOptions:
 
 def main_interact() -> None:
 
-    bookmarks_path = config.Dirs.bookmarks()
-    lists_path = config.Dirs.lists()
-
     actions = {
-        "1": lambda: pbd.download_bookmarks(bookmarks_path),
-        "2": lambda: pbd.resume_pending_jobs(bookmarks_path),
-        "3": lambda: pbd.add_list_to_bookmarks(lists_path),
+        "1": lambda: pbd.download_bookmarks(config.Dirs.bookmarks()),
+        "2": lambda: pbd.resume_pending_jobs(config.Dirs.bookmarks()),
+        "3": lambda: pbd.add_list_to_bookmarks(config.Dirs.lists()),
         "4": pbd.convert_bookmarks_to_private,
         "5": config.root_dir,
     }

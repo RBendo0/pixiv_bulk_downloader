@@ -605,8 +605,12 @@ class UI:
 
             return wcswidth(plain_text)        
 
+        # ATTENZIONE: Per risolvere correttamente il nome del thread nella
+        # intestazione dello slot tutti i metodi dichiarati in_thread_<...>
+        # devono necessariamente essere invocati all'interno di un thread in
+        # esecuzione
         @classmethod
-        def overflow_width(
+        def in_thread_overflow_width(
             cls,
             text: str,
             *,
@@ -689,10 +693,9 @@ class UI:
             return "".join(result)
 
         # text deve contenere la riga completa già pronta per il rendering.
-        #
         # Il Renderer aggiunge esclusivamente l'intestazione dello slot:
         #
-        #     [+].{T00}:
+        #     [+].{T<nn>:<nome_thread>}:
         #
         # Tutta la restante formattazione è responsabilità del chiamante.
         #
@@ -705,8 +708,12 @@ class UI:
         #     f"Completed"
         #     f"{ui.COLOR_RESET}"
         # )
+        # ATTENZIONE: Per risolvere correttamente il nome del thread nella
+        # intestazione dello slot tutti i metodi dichiarati in_thread_<...>
+        # devono necessariamente essere invocati all'interno di un thread in
+        # esecuzione
         @classmethod
-        def write(
+        def in_thread_write(
             cls,
             text: str,
             *,
@@ -741,14 +748,18 @@ class UI:
             cls._start()
             cls._update_event.set()
 
+        # ATTENZIONE: Per risolvere correttamente il nome del thread nella
+        # intestazione dello slot tutti i metodi dichiarati in_thread_<...>
+        # devono necessariamente essere invocati all'interno di un thread in
+        # esecuzione
         @classmethod
-        def clear(
+        def in_thread_clear(
             cls,
             *,
             main: bool = False,
         ) -> None:
 
-            cls.write("", main=main)
+            cls.in_thread_write("", main=main)
 
         # Entry point del thread renderer.
         @classmethod

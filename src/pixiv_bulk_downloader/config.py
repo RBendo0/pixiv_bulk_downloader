@@ -108,6 +108,9 @@ class Config:
         # - crea la directory se non esiste.
         if root:
 
+            if root.name.casefold() != "pbd":
+                root /= "pbd"
+
             try:
 
                 root.mkdir(
@@ -200,6 +203,11 @@ class Config:
 
             cls._bookmarks = cls._root / BOOKMARKS_DIR
             cls._lists = cls._root / LISTS_DIR
+
+            cls._lists.mkdir(
+                parents=True,
+                exist_ok=True,
+            )            
 
         @classmethod
         def default_root(cls) -> Path:
