@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .animation import animat
 from .bookmarks import pbd
-from .config import config
 from .errors import LoginFailedError
+from .pbd_path import sd
 from .pbd_types import CommandLineOptions
 from .pixiv_call_api import caapi
 from .ui import ui
@@ -33,11 +34,12 @@ def parse_args() -> CommandLineOptions:
 def main_interact() -> None:
 
     actions = {
-        "1": lambda: pbd.download_bookmarks(config.Dirs.bookmarks()),
-        "2": lambda: pbd.resume_pending_jobs(config.Dirs.bookmarks()),
-        "3": lambda: pbd.add_list_to_bookmarks(config.Dirs.lists()),
+        "1": lambda: pbd.download_bookmarks(sd.bookmarks()),
+        "2": lambda: pbd.resume_pending_jobs(sd.bookmarks()),
+        "3": lambda: pbd.add_list_to_bookmarks(sd.lists()),
         "4": pbd.convert_bookmarks_to_private,
-        "5": config.root_dir,
+        "5": sd.config_root_dir,
+        "6": animat.config_webm_codec,
     }
 
     while True:
@@ -50,6 +52,7 @@ def main_interact() -> None:
                 "3": "Aggiungi preferiti da una lista di url",
                 "4": "Cambia profilo di privacy ai preferiti",
                 "5": "Configura il percorso dell'archivio", 
+                "6": "Configura codec salvataggio animazioni", 
                 "0": "Esci",
             },
             footer="[T]: Debugger - [CTRL+C]: Termina",
@@ -61,7 +64,7 @@ def main_interact() -> None:
             prompt=(
                 "[?] Effettuare la scelta desiderata"
             ),
-            valid="012345T",
+            valid="0123456T",
         )        
 
         ui.line()
@@ -81,8 +84,8 @@ def _main() -> None:
 
         options = parse_args()
 
-        config.init(options["root"])
         caapi.open_session()
+        sd.init(options["root"])
         main_interact()
 
     finally:

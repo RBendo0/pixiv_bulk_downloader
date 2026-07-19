@@ -2,28 +2,34 @@ from pathlib import Path
 from typing import Any
 
 from .const import (
-    BOOKMARKS_DIR,
     CONF_DIR,
     CONFIG_FILE,
     DEFAULT_ROOT,
-    LISTS_DIR,
+    DEFAULT_WEBM_CODEC,
 )
-from .errors import PBDError
 from .iofile import JsonFile
-from .ui import ui
 
 
 class Config:
 
-    _USER_ROOT_KEY = "user_root"
+    _config_file: Path = (
+        DEFAULT_ROOT
+        / CONF_DIR
+        / CONFIG_FILE
+    )
 
-    @classmethod
-    def init(
-        cls,
-        cli_user_root: Path | None = None,
-    ) -> None:
+    _backup_file: Path = _config_file.with_suffix(
+        _config_file.suffix + ".bak"
+    )
 
-        cls.Dirs.init(cli_user_root)
+    class Key:
+        USER_ROOT = "user_root"
+        WEBM_CODEC = "webm_codec"
+
+    _defaults: dict[str, Any] = {
+        Key.USER_ROOT: "",
+        Key.WEBM_CODEC: DEFAULT_WEBM_CODEC,
+    }
 
     @classmethod
     def load(
@@ -31,19 +37,66 @@ class Config:
         key: str,
     ) -> Any | None:
 
-        try:
+        if not cls._config_file.exists():
+            return None
+
+        config = JsonFile(
+            cls._config_file
+        ).load()
+
+        if not isinstance(config, dict):
+            raise TypeError(
+                f"Config.load() '{cls._config_file.name}': "
+                "expected key/value format."
+            )
+
+        return config.get(key)
+
+    @classmethod
+    def backup(
+        cls,
+        key: str,
+    ) -> None:
+
+        value = cls._defaults.get(key)
+
+        if cls._config_file.exists():
 
             config = JsonFile(
-                cls.Dirs.config()
+                cls._config_file
             ).load()
 
             if not isinstance(config, dict):
-                return None
+                raise TypeError(
+                    f"Config.backup() '{cls._config_file.name}': "
+                    "expected key/value format."
+                )
 
-            return config.get(key)
+            value = config.get(
+                key,
+                value,
+            )
 
-        except Exception:
-            return None
+        if cls._backup_file.exists():
+
+            backup = JsonFile(
+                cls._backup_file
+            ).load()
+
+            if not isinstance(backup, dict):
+                raise TypeError(
+                    f"Config.backup() '{cls._backup_file.name}': "
+                    "expected key/value format."
+                )
+
+        else:
+            backup = {}
+
+        backup[key] = value
+
+        JsonFile(
+            cls._backup_file
+        ).save(backup)
 
     @classmethod
     def save(
@@ -52,191 +105,75 @@ class Config:
         value: Any,
     ) -> None:
 
-        try:
+        cls.backup(key)
+
+        if cls._config_file.exists():
 
             config = JsonFile(
-                cls.Dirs.config()
+                cls._config_file
             ).load()
 
             if not isinstance(config, dict):
-                config = {}
+                raise TypeError(
+                    f"Config.save() '{cls._config_file.name}': "
+                    "expected key/value format."
+                )
 
-        except Exception:
+        else:
             config = {}
 
         config[key] = value
 
         JsonFile(
-            cls.Dirs.config()
+            cls._config_file
         ).save(config)
 
     @classmethod
-    def root_dir(cls) -> None:
+    def restore(
+        cls,
+        key: str,
+    ) -> None:
 
-        ui.line()
+        value = cls._defaults.get(key)
 
-        ui.line(
-            "[i]: Enter new storage path "
-            "(leave empty for default path)."
-        )
+        if cls._backup_file.exists():
 
-        ui.line(
-            "[i]: Changes will take effect "
-            "after pressing Enter."
-        )
+            backup = JsonFile(
+                cls._backup_file
+            ).load()
 
-        root = ui.input_string(
-            prompt="[?]: >",
-            default=str(cls.Dirs.root()),
-        )
-
-        ui.clear_lines(1)
-
-        # Il file di configurazione distingue due casi:
-        # - ""     -> usa il percorso predefinito;
-        # - Path() -> usa un percorso personalizzato.
-        #
-        # Path("") rappresenta la directory corrente ("."),
-        # non il percorso predefinito. Per questo il caso
-        # della stringa vuota viene gestito separatamente.
-        root = Path(root) if root else ""
-
-        # Verifica il percorso tentando di crearlo.
-        #
-        # mkdir() svolge due funzioni:
-        # - valida il percorso;
-        # - crea la directory se non esiste.
-        if root:
-
-            if root.name.casefold() != "pbd":
-                root /= "pbd"
-
-            try:
-
-                root.mkdir(
-                    parents=True,
-                    exist_ok=True,
+            if not isinstance(backup, dict):
+                raise TypeError(
+                    f"Config.restore() '{cls._backup_file.name}': "
+                    "expected key/value format."
                 )
 
-            except Exception as e:
+            value = backup.get(
+                key,
+                value,
+            )
 
-                e = PBDError.cast(e)
+        if cls._config_file.exists():
 
-                ui.line(
-                    f"[!]: Failed to set storage path: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e}",
-                    ui.COLOR_ERROR,
+            config = JsonFile(
+                cls._config_file
+            ).load()
+
+            if not isinstance(config, dict):
+                raise TypeError(
+                    f"Config.restore() '{cls._config_file.name}': "
+                    "expected key/value format."
                 )
 
-                return
+        else:
+            config = {}
 
-        config_file = JsonFile(
-            cls.Dirs.config()
-        )
+        config[key] = value
 
-        # Il percorso è valido e disponibile.
-
-        config_file.backup()
-
-        try:
-
-            Config.save(
-                "user_root",
-                str(root),
-            )
-
-        except Exception as e:
-
-            e = PBDError.cast(e)
-
-            config_file.restore()
-  
-            ui.line(
-                f"[!]: Path restored to previous settings: "
-                f"{e.info()}: "
-                f"{type(e).__name__}: {e}",
-                ui.COLOR_ERROR,
-            )
-
-        Config.init()
-
-        ui.line(
-            f"[+]: New path set to: {Config.Dirs.root()}",
-            color=ui.COLOR_SUCCESS,
-        )
-
-    class Dirs:
-
-        _default_root: Path = DEFAULT_ROOT
-        _user_root: Path | None = None
-
-        _root: Path
-        _conf: Path
-        _config: Path
-        _bookmarks: Path
-        _lists: Path
-
-        @classmethod
-        def init(
-            cls,
-            cli_user_root: Path | None = None,
-        ) -> None:
-
-            cls._conf = cls._default_root / CONF_DIR
-            cls._config = cls._conf / CONFIG_FILE
-
-            if cli_user_root is None:
-
-                value = Config.load(Config._USER_ROOT_KEY)
-
-                if isinstance(value, str) and value:
-                    cli_user_root = Path(value)
-
-            cls._user_root = cli_user_root
-
-            cls._root = (
-                cli_user_root
-                if cli_user_root is not None
-                else cls._default_root
-            )
-
-            cls._bookmarks = cls._root / BOOKMARKS_DIR
-            cls._lists = cls._root / LISTS_DIR
-
-            cls._lists.mkdir(
-                parents=True,
-                exist_ok=True,
-            )            
-
-        @classmethod
-        def default_root(cls) -> Path:
-            return cls._default_root
-
-        @classmethod
-        def user_root(cls) -> Path | None:
-            return cls._user_root
-
-        @classmethod
-        def root(cls) -> Path:
-            return cls._root
-
-        @classmethod
-        def conf(cls) -> Path:
-            return cls._conf
-
-        @classmethod
-        def config(cls) -> Path:
-            return cls._config
-
-        @classmethod
-        def bookmarks(cls) -> Path:
-            return cls._bookmarks
-
-        @classmethod
-        def lists(cls) -> Path:
-            return cls._lists
+        JsonFile(
+            cls._config_file
+        ).save(config)
 
 
-# Alias della classe (statica) di configurazione 
+# Alias della classe statica di configurazione
 config = Config
