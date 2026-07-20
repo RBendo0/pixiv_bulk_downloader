@@ -5,7 +5,7 @@ import time
 import weakref
 import winsound
 from ctypes import wintypes
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from shutil import get_terminal_size
 from threading import (
     Event,
@@ -17,6 +17,8 @@ from threading import (
 
 import pwinput
 from wcwidth import wcswidth
+
+from .pbd_types import ToggleOption
 
 
 class UI:
@@ -119,6 +121,144 @@ class UI:
             menu_lines += 1
 
         return menu_lines
+
+    @classmethod
+    def toggle_menu(
+        cls,
+        options: list[ToggleOption],
+        *,
+        header: str = "",
+        footer: str = "",
+    ) -> list[ToggleOption]:
+
+        current_options = [
+            replace(option)
+            for option in options
+        ]
+
+        initial_states = [
+            option.enabled
+            for option in current_options
+        ]
+
+        parts: list[str] = ["\n"]
+        check_positions: list[int] = []
+        buffer_length = 1
+
+        if header:
+            header_block = f"{header}\n\n"
+            parts.append(header_block)
+            buffer_length += len(header_block)
+
+        for option in current_options:
+
+            option_prefix = (
+                f"{option.key}. "
+                f"[{cls.COLOR_SUCCESS}"
+            )
+
+            parts.append(option_prefix)
+            buffer_length += len(option_prefix)
+
+            # Indice del carattere compreso fra il colore verde
+            # e il ripristino del colore predefinito.
+            check_positions.append(buffer_length)
+
+            option_suffix = (
+                f" {cls.COLOR_DEFAULT}] "
+                f"{option.label}\n"
+            )
+
+            parts.append(option_suffix)
+            buffer_length += len(option_suffix)
+
+        parts.append("\n")
+        buffer_length += 1
+
+        if footer:
+            footer_block = f"{footer}\n\n"
+            parts.append(footer_block)
+            buffer_length += len(footer_block)
+
+        commands = (
+            "[SPAZIO] Ripristina"
+            " - "
+            "[INVIO] Conferma"
+        )
+
+        parts.append(commands)
+
+        menu_buffer = list("".join(parts))
+
+        for index, option in enumerate(current_options):
+            menu_buffer[check_positions[index]] = (
+                "✓" if option.enabled else " "
+            )
+
+        # Il numero di righe da risalire coincide con il numero
+        # di avanzamenti di riga presenti nel blocco.
+        rows_up = menu_buffer.count("\n")
+
+        valid_keys = (
+            "".join(
+                option.key
+                for option in current_options
+            )
+            + " \r"
+        )
+
+        print(
+            "".join(menu_buffer),
+            end="",
+            flush=True,
+        )
+
+        while True:
+
+            key = cls.poll_key(valid=valid_keys)
+
+            if not key:
+                time.sleep(0.05)
+                continue
+
+            if key == "\r":
+                print()
+                return current_options
+
+            if key == " ":
+
+                for index, option in enumerate(current_options):
+
+                    option.enabled = initial_states[index]
+
+                    menu_buffer[check_positions[index]] = (
+                        "✓" if option.enabled else " "
+                    )
+
+            else:
+
+                for index, option in enumerate(current_options):
+
+                    if option.key != key:
+                        continue
+
+                    option.enabled = not option.enabled
+
+                    menu_buffer[check_positions[index]] = (
+                        "✓" if option.enabled else " "
+                    )
+
+                    break
+
+            # Il cursore si trova sulla riga dei comandi.
+            # Torna alla posizione precedente alla prima riga vuota
+            # e ristampa l'intero buffer aggiornato.
+            print(
+                f"\r\033[{rows_up}A"
+                f"{''.join(menu_buffer)}",
+                end="",
+                flush=True,
+            )
 
     @classmethod
     def clear_lines(
@@ -361,11 +501,19 @@ class UI:
         return value
 
     @classmethod
-    def confirm(cls) -> bool:
+    def confirm(
+        cls,
+        prompt: str | None = None,
+        valid: str = "YN", 
+    ) -> bool:
+
+        # PROMPT di default
+        if prompt is None:
+            prompt = "[?]: Continue (Y/N)"
 
         choice = cls.input_key(
-            prompt="[?]: Continue (Y/N)",
-            valid="YN",
+            prompt=prompt,
+            valid=valid,
             default="Y",
         )
 

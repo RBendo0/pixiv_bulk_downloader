@@ -10,8 +10,8 @@ from .base import PixivBaseDownloader
 from .const import (
     DISCARDED_CSV_PREFIX,
     FETCH_CHECKPOINT_FILE,
+    METADATA_FILE,
     NOT_FOUND_CSV_PREFIX,
-    WORK_METADATA_FILE,
 )
 from .errors import (
     ApiError,
@@ -272,7 +272,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 if not folder.is_dir():
                     continue
 
-                metadata_file = folder / WORK_METADATA_FILE
+                metadata_file = folder / METADATA_FILE
                 checkpoint_file = folder / FETCH_CHECKPOINT_FILE
 
                 if (

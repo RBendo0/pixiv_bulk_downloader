@@ -4,6 +4,7 @@ from pathlib import Path
 from .config import config
 from .const import (
     BOOKMARKS_DIR,
+    CONFIG_KEY_USER_ROOT,
     DEFAULT_ROOT,
     LISTS_DIR,
 )
@@ -165,7 +166,7 @@ class StorageDirs:
             try:
 
                 value = config.load(
-                    config.Key.USER_ROOT
+                    CONFIG_KEY_USER_ROOT
                 )
 
             except Exception as e:
@@ -183,11 +184,11 @@ class StorageDirs:
                 # configurazione illeggibile. Ripristina quindi
                 # l'ultimo valore valido e tenta nuovamente la lettura.
                 config.restore(
-                    config.Key.USER_ROOT
+                    CONFIG_KEY_USER_ROOT
                 )
 
                 value = config.load(
-                    config.Key.USER_ROOT
+                    CONFIG_KEY_USER_ROOT
                 )
 
                 ui.line(
@@ -301,7 +302,7 @@ class StorageDirs:
             try:
 
                 config.save(
-                    config.Key.USER_ROOT,
+                    CONFIG_KEY_USER_ROOT,
                     str(root),
                 )
 

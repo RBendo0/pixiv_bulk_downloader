@@ -42,6 +42,26 @@ class AddListOptions(TypedDict):
     restrict: BookmarkPrivacy
 
 
+@dataclass
+class ToggleOption:
+    key: str
+    label: str
+    enabled: bool
+
+
+@dataclass
+class PreferredMediaFormats:
+    gif: bool
+    webm: bool
+    mp4: bool
+
+
+@dataclass
+class CodecSettings:
+    webm: str
+    mp4: str
+
+
 @dataclass(frozen=True)
 class AnimationFrame:
     image: "Image"

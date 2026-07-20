@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .animation import animat
+from .animation import m3
 from .bookmarks import pbd
+from .config import config
 from .errors import LoginFailedError
 from .pbd_path import sd
 from .pbd_types import CommandLineOptions
@@ -39,7 +40,8 @@ def main_interact() -> None:
         "3": lambda: pbd.add_list_to_bookmarks(sd.lists()),
         "4": pbd.convert_bookmarks_to_private,
         "5": sd.config_root_dir,
-        "6": animat.config_webm_codec,
+        "6": m3.set_preferred_media_formats,
+        "7": config.Advanced.show_and_reset_settings,
     }
 
     while True:
@@ -53,6 +55,7 @@ def main_interact() -> None:
                 "4": "Cambia profilo di privacy ai preferiti",
                 "5": "Configura il percorso dell'archivio", 
                 "6": "Configura codec salvataggio animazioni", 
+                "7": "Abilita accesso a impostazioni avanzate",
                 "0": "Esci",
             },
             footer="[T]: Debugger - [CTRL+C]: Termina",
@@ -64,7 +67,7 @@ def main_interact() -> None:
             prompt=(
                 "[?] Effettuare la scelta desiderata"
             ),
-            valid="0123456T",
+            valid="01234567T",
         )        
 
         ui.line()
@@ -86,6 +89,7 @@ def _main() -> None:
 
         caapi.open_session()
         sd.init(options["root"])
+        m3.init()
         main_interact()
 
     finally:

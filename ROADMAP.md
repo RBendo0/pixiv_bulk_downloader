@@ -2,43 +2,51 @@
 
 ## Stato del progetto
 
-L'architettura principale è completata.
-La fase corrente è dedicata al completamento del supporto alle ugoira e al consolidamento finale dell'applicazione.
+L'architettura principale è sostanzialmente completata.
+
+La fase corrente è dedicata al completamento del supporto alle ugoira e al consolidamento dell'intero workflow di download.
 
 ## Milestone completate
 
-- Architettura applicativa
-- Thread Pool System
-- Renderer concorrente
-- Workflow di download
-- Sistema di configurazione persistente
-- Gestione della storage root
-- Collaudo del sistema di configurazione
+* Architettura applicativa
+* Thread Pool System (TPS)
+* Renderer concorrente
+* Workflow di download multi-thread
+* Gestione unificata degli errori
+* Sistema di configurazione persistente
+* Gestione della Storage Root
+* Refactoring della configurazione multimediale
+* Migrazione delle impostazioni a dataclass
+* Configurazione dei codec avanzati
+* Collaudo del nuovo sistema di configurazione
 
 ---
 
 # 1. Conversione ugoira (fase corrente)
 
-Completare la conversione delle ugoira in GIF e WebM e integrarla nel workflow di download.
+Completare il modulo `MultiMediaManager` e integrarlo nel downloader.
 
-Attività:
-- conversione GIF;
-- conversione WebM;
-- configurazione codec;
-- integrazione nel downloader;
-- collaudo.
+Attività immediate:
+
+* completamento di `set_preferred_media_formats()`;
+* caricamento delle immagini dell'ugoira;
+* costruzione della sequenza di `AnimationFrame`;
+* generazione GIF;
+* generazione WebM;
+* integrazione della conversione nel workflow di download;
+* collaudo completo della pipeline.
 
 ---
 
-# 2. Consolidamento delle dipendenze
+# 2. Consolidamento architetturale
 
-Ridurre l'accoppiamento con le librerie esterne e consolidare i confini dell'architettura.
+Completare il disaccoppiamento dai componenti esterni e rifinire i punti di integrazione.
 
 ---
 
 # 3. Revisione del login
 
-Rifinire il workflow di autenticazione, la gestione della sessione e la presentazione dei messaggi.
+Consolidare autenticazione, gestione della sessione e presentazione degli errori.
 
 ---
 
@@ -50,22 +58,38 @@ Uniformare l'integrazione con PixivPy3, Playwright, my_gppt e FFmpeg.
 
 # 5. Collaudo generale
 
-Validare tutti i workflow applicativi e il pacchetto distribuito.
+Validare tutti i workflow dell'applicazione:
+
+* download;
+* resume;
+* missing;
+* chrono;
+* add bookmarks;
+* conversione ugoira;
+* configurazione.
 
 ---
 
 # 6. Documentazione
 
-Aggiornare DecisionLog, documentazione tecnica e reportistica.
+Aggiornare Decision Log, roadmap e documentazione tecnica.
 
 ---
 
 # 7. Pubblicazione
 
-Verificare il repository, aggiornare la documentazione pubblica e preparare il rilascio.
+* verifica del repository pubblico;
+* aggiornamento della documentazione online;
+* preparazione del primo rilascio pubblico.
 
 ---
 
 # 8. Evoluzioni future
 
-Miglioramenti non prioritari: UI, prestazioni, backup automatici, nuove funzionalità.
+Attività non prioritarie:
+
+* conversione automatica degli archivi ZIP delle ugoira;
+* backup automatico dei file operativi;
+* miglioramenti della UI;
+* ottimizzazioni prestazionali;
+* funzionalità aggiuntive.

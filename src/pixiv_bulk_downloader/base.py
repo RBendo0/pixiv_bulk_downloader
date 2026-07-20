@@ -5,8 +5,8 @@ from pathlib import Path
 
 from .const import (
     FETCH_CHECKPOINT_FILE,
+    METADATA_FILE,
     UGOIRA_ZIP_FILE,
-    WORK_METADATA_FILE,
 )
 from .errors import (
     DownloadRateLimitError,
@@ -131,7 +131,7 @@ class PixivBaseDownloader:
             )
 
             # Salva l'intero dump dei metadata, animazioni comprese
-            metadata_file = work_dir / WORK_METADATA_FILE
+            metadata_file = work_dir / METADATA_FILE
             image_data.save(metadata_file)
 
         except Exception as e:
