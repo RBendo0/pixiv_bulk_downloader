@@ -222,7 +222,14 @@ class UI:
                 continue
 
             if key == "\r":
-                print()
+                
+                print(
+                    "\r\033[K"
+                    + "\033[A\r\033[K" * rows_up,
+                    end="",
+                    flush=True,
+                )
+                
                 return current_options
 
             if key == " ":

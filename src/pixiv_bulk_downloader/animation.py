@@ -38,7 +38,11 @@ class MultiMediaManager:
             CONFIG_KEY_PREF_MEDIA
         )
 
-        if isinstance(preferred_media_formats, dict):
+        if (
+            isinstance(preferred_media_formats, dict)
+            and any(preferred_media_formats)
+        ):
+
             cls._preferred_media_formats = PreferredMediaFormats(
                 **preferred_media_formats
             )
@@ -95,21 +99,88 @@ class MultiMediaManager:
         )
 
     @classmethod
+    def _show_current_media_settings(cls) -> None:
+        
+        ui.line(
+            "[+]: Animation downloads formats: [",
+            history=False,
+        )
+
+        ui.line(
+            f"{" GIF" if cls._preferred_media_formats.gif else ""}"
+            f"{" WEBM" if cls._preferred_media_formats.webm else ""}"
+            f"{" MP4" if cls._preferred_media_formats.mp4 else ""}",
+            color=ui.COLOR_INPUT,
+            home=False,
+            clear=False,
+            history=False,
+        )
+
+        ui.line(
+            " ]",
+            home=False,
+            clear=False,
+        )
+
+        ui.line(
+            "[+]: Animation current codecs: [ WEBM=",
+            history=False,
+        )
+
+        ui.line(
+            f"{cls._codec.webm}",
+            color=ui.COLOR_INPUT,
+            home=False,
+            clear=False,
+            history=False,
+        )
+
+        ui.line(
+            " MP4=",
+            home=False,
+            clear=False,
+            history=False,
+        )
+
+        ui.line(
+            f"{cls._codec.mp4}",
+            color=ui.COLOR_INPUT,
+            home=False,
+            clear=False,
+            history=False,
+        )
+
+        ui.line(
+            " ]",
+            home=False,
+            clear=False,
+        )
+
+    @classmethod
     def init(cls) -> None:
 
         cls._load_preferred_media_formats()
         cls._load_media_codecs()
 
+        cls._show_current_media_settings()
+
     @classmethod
     def set_preferred_media_formats(cls) -> None:
 
+        ui.line()
+        ui.line("[i]: Selezionare i singoli formati di salvataggio delle animazioni")
+        ui.line("[i]: premendo il tasto del numero associato alla rispettiva voce menu.")
+        ui.line("[i]: Nessuna selezione imposta formati di default")
+        ui.line("[i]: [SPAZIO] ripristina impostazioni precedenti")
+        ui.line("[i]: [INVIO] per confermare")
+        ui.line()
+        
         options = cls._pmfs_to_togo(
             cls._preferred_media_formats
         )
 
         options = ui.toggle_menu(
             options,
-            header="Formati di salvataggio delle animazioni",
         )
 
         cls._preferred_media_formats = cls._togo_to_pmfs(
@@ -121,12 +192,9 @@ class MultiMediaManager:
             asdict(cls._preferred_media_formats),
         )
 
-        ui.line(
-            "[+]: Preferred media formats: "
-            f"GIF={'ON' if cls._preferred_media_formats.gif else 'OFF'}, "
-            f"WEBM={'ON' if cls._preferred_media_formats.webm else 'OFF'}, "
-            f"MP4={'ON' if cls._preferred_media_formats.mp4 else 'OFF'}"
-        )
+        ui.clear_lines(6)
+
+        cls.init()
 
     @classmethod
     def load_images(cls):

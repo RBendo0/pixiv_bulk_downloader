@@ -238,57 +238,91 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if not ui.confirm():
             return
 
-        d_width: int | None = None
+        online_total: int | None = None
 
-        try:
-            
-            # Numero di opere totali
-            total = caapi.user_detail(
-                target_id,
-            )["profile"][
-                "total_illust_bookmarks_public"
-            ]
+        if restrict == "public":
 
-            # Numero di opere totali marcate come preferite
-            d_width = len(str(total))
+            try:
+                
+                # Numero di opere totali
+                online_total = caapi.user_detail(
+                    target_id,
+                )["profile"][
+                    "total_illust_bookmarks_public"
+                ]
 
-        except Exception as e:
+                # Numero di opere totali marcate come preferite
+                d_width = len(str(online_total))
 
-            ui.line(
-                f"[!]: Failed to obtain total artwork count: "
-                f"{type(e).__name__}: {e}",
-                ui.COLOR_WARNING,
-            )
+            except Exception as e:
 
-        urls_len = 0
+                e = PBDError.hierarchy(e)
+
+                ui.line(
+                    f"[!]: Failed to obtain total public artwork count: "
+                    f"{e.report()}",
+                    ui.COLOR_WARNING,
+                )
 
         # Lista ID delle opere già scaricate completamente
-        local_ids: set[str] = set()
+        local_ids: set[int] = set()
+        local_total: int = 0
+
+        def check_for_artworks(
+            local_ids: set[int],
+            metadata_file: Path | None = None,
+            checkpoint_file: Path | None = None,
+        ) -> None:
+
+            if (metadata_file and not checkpoint_file):
+
+                try:
+
+                    image_data = PixivMetadata()
+                    image_data.load(metadata_file)
+
+                except Exception:
+                    
+                    return
+
+                local_ids.add(image_data.id)
+
+                ui.line(
+                    "[+]: Found ",
+                    history=False,
+                )
+
+                ui.line(
+                    f"{len(local_ids)}",
+                    ui.COLOR_INPUT,
+                    home=False,
+                    clear=False,
+                    history=False,
+                )
+
+                ui.line(
+                    " artworks",
+                    home=False,
+                    clear=False,
+                    history=False,
+                )
 
         if mode in ("missing", "chrono"):
 
-            for folder in bookmarks_path.rglob("*"):
+            ui.line("[+]: Scanning local archive...")   
 
-                if not folder.is_dir():
-                    continue
+            cls.scan_archive(
+                bookmarks_path, 
+                shared_context=local_ids, 
+                run_for_each_folder=check_for_artworks
+            )
 
-                metadata_file = folder / METADATA_FILE
-                checkpoint_file = folder / FETCH_CHECKPOINT_FILE
+            ui.line(
+                home=False, 
+                clear=False,
+            )
 
-                if (
-                    metadata_file.exists()
-                    and not checkpoint_file.exists()
-                ):
-
-                    try:
-
-                        image_data = PixivMetadata()
-                        image_data.load(metadata_file)
-
-                    except Exception:
-                        continue
-
-                    local_ids.add(str(image_data.id))
+            local_total = len(local_ids)
 
         # ATTENZIONE:
         # default_abort è persistente.
@@ -345,7 +379,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiRateLimitError as e:
 
                 ui.line(
-                    f"[!]: {e.info()}: {e} | "
+                    f"[!]: {e.report(err_type=False)} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_WARNING,
@@ -368,7 +402,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiError as e:
 
                 ui.line(
-                    f"[!]: {e.info()}: {e} | "
+                    f"[!]: {e.report(err_type=False)} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_ERROR,
@@ -397,7 +431,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 continue
 
-            for idx, illust in enumerate(res_json["illusts"]):
+            for illust in res_json["illusts"]:
 
                 # Rileva se è stata richiesta l'interruzione del processo
                 if cls.default_abort.is_requested and not cls.default_abort.is_notified:
@@ -410,7 +444,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     cls.default_abort.set_notified()
 
                 # Opera già presente nel database locale
-                if str(illust.id) in local_ids:
+                if illust.id in local_ids:
 
                     # Modalità Missing, se l'ID corrente è presente in locale salta il ciclo
                     if mode == "missing":
@@ -453,10 +487,15 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         cls.save_index(image_data, bookmarks_path)
                         urls.append(image_data)
 
+                        current = len(urls)
+
+                        if mode in ("missing", "chrono"):
+                            current += local_total
+
                         counter = (
-                            f"[{urls_len + idx + 1:0{d_width}d}/{total:0{d_width}d}]"
-                            if d_width is not None
-                            else f"[{urls_len + idx + 1}]"
+                            f"[{current:0{d_width}d}/{online_total:0{d_width}d}]"
+                            if online_total is not None
+                            else f"[{current}]"
                         )
 
                         ui.line(
@@ -479,7 +518,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         )
 
                         ui.line(
-                            f"[!]: {e.info()}: {e} | "
+                            f"[!]: {e.report(err_type=False)} | "
                             f"Artwork: <ID:{illust.id}> "
                             f"{illust.title}",
                             ui.COLOR_WARNING,
@@ -515,8 +554,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         )
 
                         ui.line(
-                            f"[!]: {e.info()}: "
-                            f"{type(e).__name__}: {e}",
+                            f"[!]: {e.report()}",
                             ui.COLOR_ERROR,
                             home=False,
                             clear=False,
@@ -550,7 +588,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                             continue
 
-            urls_len = len(urls)
             random_api_delay()
 
         else:
@@ -715,7 +752,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 )
 
                                 ui.line(
-                                    f"[!]: {e.info()}: {e}",
+                                    f"[!]: {e.report(err_type=False)}",
                                     ui.COLOR_WARNING,
                                     home=False,
                                     clear=False,
@@ -747,8 +784,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 )
 
                                 ui.line(
-                                    f"[!]: {e.info()}: "
-                                    f"{type(e).__name__}: {e}",
+                                    f"[!]: {e.report()}",
                                     ui.COLOR_WARNING,
                                     home=False,
                                     clear=False,
@@ -758,10 +794,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                             except ApiError as e:
 
-                                error_description = (
-                                    f"{e.info()}: "
-                                    f"{type(e).__name__}: {e}"
-                                )
+                                error_description = f"{e.report()}"
 
                                 discarded_csv.append_row(
                                     url,

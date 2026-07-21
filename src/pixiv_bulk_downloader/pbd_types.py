@@ -55,6 +55,13 @@ class PreferredMediaFormats:
     webm: bool
     mp4: bool
 
+    def __iter__(self):
+        return iter((
+            self.gif,
+            self.webm,
+            self.mp4,
+        ))
+
 
 @dataclass
 class CodecSettings:

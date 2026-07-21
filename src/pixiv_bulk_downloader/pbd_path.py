@@ -138,7 +138,7 @@ class StorageDirs:
     def _show_current_storage_root(cls) -> None:
 
         ui.line(
-           "[i]: Storage root: ",
+           "[+]: Storage root located to: [ ",
            history=False,
         )
 
@@ -147,7 +147,15 @@ class StorageDirs:
            color=ui.COLOR_INPUT,
            home=False,
            clear=False,
+           history=False,
         )
+
+        ui.line(
+           " ]",
+           home=False,
+           clear=False,
+        )
+
 
     @classmethod
     def init(

@@ -54,7 +54,7 @@ def main_interact() -> None:
                 "3": "Aggiungi preferiti da una lista di url",
                 "4": "Cambia profilo di privacy ai preferiti",
                 "5": "Configura il percorso dell'archivio", 
-                "6": "Configura codec salvataggio animazioni", 
+                "6": "Configura formati salvataggio animazioni", 
                 "7": "Abilita accesso a impostazioni avanzate",
                 "0": "Esci",
             },
@@ -87,9 +87,19 @@ def _main() -> None:
 
         options = parse_args()
 
+        ui.line(
+            "[i]: Initialisation Begin. "
+        )
+
         caapi.open_session()
         sd.init(options["root"])
         m3.init()
+
+        ui.line(
+            "[i]: Initialisation End. " 
+        )
+
+
         main_interact()
 
     finally:

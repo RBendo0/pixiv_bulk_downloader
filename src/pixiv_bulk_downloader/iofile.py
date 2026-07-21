@@ -5,6 +5,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Any
+from .errors import PBDError
 
 
 class BaseFile:
@@ -48,36 +49,45 @@ class BaseFile:
 class JsonFile(BaseFile):
 
     def load(self) -> Any:
+        try:
+        
+            with self._path.open(
+                "r",
+                encoding="utf-8",
+            ) as file:
 
-        with self._path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
+                return json.load(file)
 
-            return json.load(file)
+        except Exception as e:
+            raise PBDError.hierarchy(e) from None
 
     def save(
         self,
         data: Any,
     ) -> None:
 
-        self._path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+        try:
 
-        with self._path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-
-            json.dump(
-                data,
-                file,
-                indent=4,
-                ensure_ascii=False,
-                default=str,
+            self._path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
             )
+
+            with self._path.open(
+                "w",
+                encoding="utf-8",
+            ) as file:
+
+                json.dump(
+                    data,
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                    default=str,
+                )
+
+        except Exception as e:
+            raise PBDError.hierarchy(e) from None
 
 
 class CsvFile(BaseFile):

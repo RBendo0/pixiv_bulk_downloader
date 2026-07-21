@@ -139,11 +139,32 @@ class PBDError(Exception):
 
         return "Operation failed"
 
+    def report(
+        self,
+        *,
+        err_type: bool = True,
+    ) -> str:
+
+        return (
+            f"{self.info()}: "
+            + (f"{type(self).__name__}: " if err_type else "")
+            + f"{self}"
+        )
+
     @classmethod
     def hierarchy(cls, e: Exception) -> "PBDError":
 
         if isinstance(e, PBDError):
             return e
+
+        if isinstance(e, FileNotFoundError):
+            return UserHasNotDefinedCustomConfiguration(str(e))
+
+        if isinstance(e, OSError):
+            return UnableToPerformFileOperation(str(e))
+
+        if isinstance(e, (TypeError, ValueError)):
+            return InvalidDataFormat(str(e))
 
         return PBDError(str(e))
 
@@ -235,3 +256,36 @@ class DownloadRateLimitError(RateLimitError):
             current = current.__cause__ or current.__context__
 
         return False
+    
+
+class JsonError(PBDError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "JSON File or Data Error"
+
+
+class UserHasNotDefinedCustomConfiguration(JsonError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "User Has Not Defined Custom Configuration"
+
+
+class UnableToPerformFileOperation(JsonError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Unable To Perform File Operation"
+
+
+class InvalidDataFormat(JsonError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Invalid JSON Data Format"
+

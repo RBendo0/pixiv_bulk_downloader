@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar
 
 from .const import (
     FETCH_CHECKPOINT_FILE,
@@ -18,6 +20,8 @@ from .pbd_path import PixivPath
 from .pixiv_call_api import caapi
 from .tps import TPS
 from .ui import ui
+
+T = TypeVar("T")
 
 
 class PixivBaseDownloader:
@@ -145,8 +149,7 @@ class PixivBaseDownloader:
 
             ui.line(
                 f"[!]: Failed to save metadata: "
-                f"{e.info()}: "
-                f"{type(e).__name__}: {e} "
+                f"{e.report()} "
                 f"(checkpoint preserved)",
                 ui.COLOR_WARNING,
                 home=False,
@@ -297,8 +300,7 @@ class PixivBaseDownloader:
                     f" | "
                     f"{ui.COLOR_ERROR}"
                     f"Download failed: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e} "
+                    f"{e.report()} "
                     f"(checkpoint preserved)"
                 )
 
@@ -378,8 +380,7 @@ class PixivBaseDownloader:
 
                 ui.line(
                     f"Failed to submit artwork: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e}",
+                    f"{e.report()}",
                     ui.COLOR_ERROR,
                     home=False,
                     clear=False,
@@ -453,6 +454,32 @@ class PixivBaseDownloader:
         image_data.save(index_file)    
 
     @classmethod
+    def scan_archive(
+        cls,
+        save_path: Path,
+        *,
+        shared_context: T,
+        run_for_each_folder: Callable[
+            [T, Path | None, Path | None], 
+            None,
+        ],
+    ) -> None:
+
+        for folder in save_path.rglob("*"):
+
+            if not folder.is_dir():
+                continue
+
+            metadata_file = folder / METADATA_FILE
+            checkpoint_file = folder / FETCH_CHECKPOINT_FILE
+
+            run_for_each_folder(
+                shared_context,
+                metadata_file if metadata_file.exists() else None,
+                checkpoint_file if checkpoint_file.exists() else None,
+            )
+
+    @classmethod
     def rebuild_index(
         cls,
         save_path: Path,
@@ -489,15 +516,14 @@ class PixivBaseDownloader:
 
                 ui.line(
                     f"[!]: Failed to load index: {index_file}: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e}",
+                    f"{e.report()}",
                     ui.COLOR_ERROR,
                 )
 
         data.sort(key=lambda x: x.id)
 
         return data
-    
+
     @classmethod
     def resume_pending_jobs(
         cls,
