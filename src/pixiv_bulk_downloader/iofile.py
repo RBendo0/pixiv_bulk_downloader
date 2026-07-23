@@ -59,6 +59,7 @@ class JsonFile(BaseFile):
                 return json.load(file)
 
         except Exception as e:
+
             raise PBDError.hierarchy(e) from None
 
     def save(
@@ -87,6 +88,7 @@ class JsonFile(BaseFile):
                 )
 
         except Exception as e:
+
             raise PBDError.hierarchy(e) from None
 
 

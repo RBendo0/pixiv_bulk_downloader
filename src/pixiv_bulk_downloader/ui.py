@@ -23,16 +23,76 @@ from .pbd_types import ToggleOption
 
 class UI:
 
+    # ------------------
+    # Colori disponibili
+    # ------------------
+    
     COLOR_DEFAULT = "\033[37m"    # bianco
     COLOR_SUCCESS = "\033[32m"    # verde
     COLOR_WARNING = "\033[33m"    # giallo
     COLOR_ERROR = "\033[31m"      # rosso
 
-    COLOR_INPUT = "\033[90m"      # grigio scuro
-    
+    COLOR_INFO = "\033[90m"       # grigio scuro
+    COLOR_INPUT = "\033[36m"      # ciano
+
     COLOR_RESET = "\033[0m"       # nero
 
+    # --------------
+    # Tasti speciali
+    # --------------
+
+    KEY_ENTER = "\r"
+    KEY_ESCAPE = "\x1b"
+    KEY_SPACE = " "
+
     _console_lock = Lock()
+
+    @classmethod
+    def _key_name(
+        cls,
+        key: str,
+    ) -> str:
+
+        match key:
+
+            case cls.KEY_ENTER:
+                return "ENTER"
+
+            case cls.KEY_ESCAPE:
+                return "ESC"
+
+            case cls.KEY_SPACE:
+                return "SPACE"
+
+            case _:
+                return key
+
+
+    @classmethod
+    def refresh(cls) -> None:
+
+        with cls._console_lock:
+
+            print(
+                "\033[2J\033[H",
+                end="",
+                flush=True,
+            )
+
+    @classmethod
+    def _apply_inline_markup(
+        cls,
+        text: str,
+        *,
+        old_style: str,
+        new_style: str,
+    ) -> str:    
+
+        return (
+            text
+            .replace("@@.", old_style)
+            .replace("@@", new_style)
+        )
 
     @classmethod
     def line(
@@ -40,12 +100,19 @@ class UI:
         text: str = "",
         color: str = COLOR_DEFAULT,
         *,
+        tag_color: str = COLOR_INFO,
         home: bool = True,
         clear: bool = True,
         history: bool = True,
     ) -> None:
 
         with cls._console_lock:
+
+            text = cls._apply_inline_markup(
+                text,
+                old_style=color,
+                new_style=tag_color,
+            )
 
             prefix = ""
             
@@ -336,7 +403,7 @@ class UI:
             for remaining in range(timeout, 0, -1):
 
                 cls.line(
-                    prompt + f" (Default [{default}] tra {remaining}s): ",
+                    prompt + f" (Default [{cls._key_name(default)}] tra {remaining}s): ",
                     history=False,
                 )
 
@@ -510,23 +577,21 @@ class UI:
     @classmethod
     def confirm(
         cls,
-        prompt: str | None = None,
-        valid: str = "YN", 
+        prompt: str = "Continue",
+        *,
+        valid: str = KEY_ENTER + KEY_ESCAPE,
+        default: str = KEY_ENTER,
     ) -> bool:
 
-        # PROMPT di default
-        if prompt is None:
-            prompt = "[?]: Continue (Y/N)"
-
         choice = cls.input_key(
-            prompt=prompt,
+            prompt=f"[?]: {prompt} (@@ENTER@@.=Confirm / @@ESC@@.=Cancel):",
             valid=valid,
-            default="Y",
+            default=default,
         )
 
         cls.clear_lines(1)
 
-        return choice == "Y"
+        return choice == cls.KEY_ENTER
 
     @classmethod
     def poll_key(

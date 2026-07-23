@@ -146,9 +146,8 @@ class PBDError(Exception):
     ) -> str:
 
         return (
-            f"{self.info()}: "
-            + (f"{type(self).__name__}: " if err_type else "")
-            + f"{self}"
+            f"{self.info()}"
+            + (f": {self}" if err_type and str(self) else "")
         )
 
     @classmethod

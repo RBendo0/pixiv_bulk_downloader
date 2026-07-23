@@ -56,9 +56,8 @@ def main_interact() -> None:
                 "5": "Configura il percorso dell'archivio", 
                 "6": "Configura formati salvataggio animazioni", 
                 "7": "Abilita accesso a impostazioni avanzate",
-                "0": "Esci",
             },
-            footer="[T]: Debugger - [CTRL+C]: Termina",
+            footer="[ESC=Termina / SPAZIO=Refresh]",
             frame=True,
             top_margin=4,
         )
@@ -67,17 +66,18 @@ def main_interact() -> None:
             prompt=(
                 "[?] Effettuare la scelta desiderata"
             ),
-            valid="01234567T",
+            valid="1234567" + ui.KEY_ESCAPE + ui.KEY_SPACE,
         )        
 
         ui.line()
 
-        if choice == "0":
-            break
-        elif choice == "T":
-            # inserire in questa riga eventuali routine di test
+        if choice == ui.KEY_SPACE:
+            ui.refresh()
             continue
-        
+
+        if choice == ui.KEY_ESCAPE:
+            break
+
         actions[choice]()
 
 
@@ -88,7 +88,7 @@ def _main() -> None:
         options = parse_args()
 
         ui.line(
-            "[i]: Initialisation Begin. "
+            "[+]: Initialisation Begin. "
         )
 
         caapi.open_session()
@@ -96,9 +96,8 @@ def _main() -> None:
         m3.init()
 
         ui.line(
-            "[i]: Initialisation End. " 
+            "[-]: Initialisation End. " 
         )
-
 
         main_interact()
 

@@ -102,58 +102,19 @@ class MultiMediaManager:
     def _show_current_media_settings(cls) -> None:
         
         ui.line(
-            "[+]: Animation downloads formats: [",
-            history=False,
+            "[+]: Animation downloads formats: [@@"
+            f"{' GIF' if cls._preferred_media_formats.gif else ""}"
+            f"{' WEBM' if cls._preferred_media_formats.webm else ""}"
+            f"{' MP4' if cls._preferred_media_formats.mp4 else ""}"
+            "@@. ]",
+            tag_color=ui.COLOR_INFO,
         )
 
         ui.line(
-            f"{" GIF" if cls._preferred_media_formats.gif else ""}"
-            f"{" WEBM" if cls._preferred_media_formats.webm else ""}"
-            f"{" MP4" if cls._preferred_media_formats.mp4 else ""}",
-            color=ui.COLOR_INPUT,
-            home=False,
-            clear=False,
-            history=False,
-        )
-
-        ui.line(
-            " ]",
-            home=False,
-            clear=False,
-        )
-
-        ui.line(
-            "[+]: Animation current codecs: [ WEBM=",
-            history=False,
-        )
-
-        ui.line(
-            f"{cls._codec.webm}",
-            color=ui.COLOR_INPUT,
-            home=False,
-            clear=False,
-            history=False,
-        )
-
-        ui.line(
-            " MP4=",
-            home=False,
-            clear=False,
-            history=False,
-        )
-
-        ui.line(
-            f"{cls._codec.mp4}",
-            color=ui.COLOR_INPUT,
-            home=False,
-            clear=False,
-            history=False,
-        )
-
-        ui.line(
-            " ]",
-            home=False,
-            clear=False,
+            "[+]: Animation current codecs: ["
+            f" WEBM=@@{cls._codec.webm}@@."
+            f" MP4=@@{cls._codec.mp4}@@. ]",
+            tag_color=ui.COLOR_INFO,
         )
 
     @classmethod

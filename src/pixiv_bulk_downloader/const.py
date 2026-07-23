@@ -1,10 +1,17 @@
+import sys
 from pathlib import Path
 from typing import Final
 
 from .pbd_types import CodecSettings, PreferredMediaFormats
 
 # ROOT DI DEFAULT: necessaria per archiviare le impostazioni dell'applicazione
-DEFAULT_ROOT: Final[Path] = Path.home() / "pbd"
+# viene determinata dalla posizione dell'eseguibile compilato con PyInstaller
+# se l'esecuzione è partita da lì, altrimenti usa il percorso assoluto
+DEFAULT_ROOT: Final[Path] = (
+    Path(sys.executable).resolve().parent.parent
+    if getattr(sys, "frozen", False)
+    else Path.home() / "pbd"
+)
 
 # CARTELLA DELLE IMPOSTAZIONI: salvata sono nella root di default
 CONF_DIR: Final[Path] = Path("conf")

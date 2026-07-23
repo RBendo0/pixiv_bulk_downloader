@@ -9,8 +9,6 @@ from pixivpy3.utils import JsonDict
 from .base import PixivBaseDownloader
 from .const import (
     DISCARDED_CSV_PREFIX,
-    FETCH_CHECKPOINT_FILE,
-    METADATA_FILE,
     NOT_FOUND_CSV_PREFIX,
 )
 from .errors import (
@@ -62,11 +60,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         )
 
         c1 = ui.input_key(
-            prompt="[?] Scegliere ([0] per Menu principale)",
-            valid="0123",
+            prompt="[?] Scegliere (ESC per Menu principale)",
+            valid="123" + ui.KEY_ESCAPE,
         )
 
-        if c1 == "0":
+        if c1 == ui.KEY_ESCAPE:
             return None
 
         ui.menu(
@@ -78,11 +76,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         )
 
         c2 = ui.input_key(
-            prompt="[?] Scegliere ([0] per Menu principale)",
-            valid="012",
+            prompt="[?] Scegliere (ESC per Menu principale)",
+            valid="12" + ui.KEY_ESCAPE,
         )
 
-        if c2 == "0":
+        if c2 == ui.KEY_ESCAPE:
             return None
 
         return {
@@ -274,7 +272,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             checkpoint_file: Path | None = None,
         ) -> None:
 
-            if (metadata_file and not checkpoint_file):
+            if (
+                metadata_file is not None
+                and checkpoint_file is None
+            ):
 
                 try:
 
@@ -294,14 +295,14 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                 ui.line(
                     f"{len(local_ids)}",
-                    ui.COLOR_INPUT,
+                    ui.COLOR_INFO,
                     home=False,
                     clear=False,
                     history=False,
                 )
 
                 ui.line(
-                    " artworks",
+                    " artworks.",
                     home=False,
                     clear=False,
                     history=False,
@@ -627,11 +628,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
         try:
 
-            # Imposta interruzione da utente
-            user_abort = ui.InputPending(
-                valid="Q",
-                prompt="Press Q to interrupt the process."
-            )
+            # ATTENZIONE:
+            # default_abort è persistente.
+            # Chiamare sempre reset() prima del primo utilizzo.
+            cls.default_abort.reset()
 
             for source_file in options["source_files"]:
 
@@ -679,11 +679,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     continue
 
                 # Stampe informative
-                ui.line("[i]: " + user_abort.prompt)
+                ui.line("[i]: " + cls.default_abort.prompt)
 
                 for line in reversed(lines):
 
-                    if user_abort.is_requested:
+                    if cls.default_abort.is_requested:
 
                         final_message = "[!]: Adding bookmarks interrupted by user."
 

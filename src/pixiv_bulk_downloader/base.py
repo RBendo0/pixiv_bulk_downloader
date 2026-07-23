@@ -35,8 +35,8 @@ class PixivBaseDownloader:
     )
 
     default_abort = ui.InputPending(
-        valid="Q",
-        prompt="Press Q to interrupt the process.",
+        valid=ui.KEY_ESCAPE,
+        prompt="Press ESC to interrupt the process.",
     )
 
     @classmethod
@@ -354,7 +354,7 @@ class PixivBaseDownloader:
             progress = (
                 f"[{idx + 1:0{d_width}d}/"
                 f"{data_len:0{d_width}d}]: "
-                f"{ui.COLOR_INPUT}"
+                f"{ui.COLOR_INFO}"
                 f"<ID:{image_data.id}> "
                 f"{image_data.title}"
                 f"{ui.COLOR_DEFAULT}"
@@ -487,38 +487,47 @@ class PixivBaseDownloader:
 
         data: list[PixivMetadata] = []
 
-        found = 0
+        def check_for_pending(
+            data: list[PixivMetadata],
+            metadata_file: Path | None = None,
+            checkpoint_file: Path | None = None,
+        ) -> None:
 
-        if not save_path.exists():
-            return data
+            if checkpoint_file is not None:
 
-        for index_file in save_path.rglob(
-            FETCH_CHECKPOINT_FILE.name
-        ):
+                try:
 
-            try:
+                    image_data = PixivMetadata()
+                    image_data.load(checkpoint_file)
 
-                image_data = PixivMetadata()
-                image_data.load(index_file)
-                
-                data.append(image_data)
+                    data.append(image_data)
 
-                found += 1
+                    ui.line(
+                        f"[+]: Found @@{len(data)}@@. pending jobs.",
+                        tag_color=ui.COLOR_INFO,
+                        history=False,
+                    )
 
-                ui.line(
-                    f"[+]: Pending jobs found: {found}",
-                    history=False,
-                )
+                except Exception as e:
 
-            except Exception as e:
+                    e = PBDError.cast(e)
 
-                e = PBDError.cast(e)
+                    ui.line(
+                        f"[!]: Failed to load job: {checkpoint_file.parent.name}: "
+                        f"{e.report()}",
+                        ui.COLOR_ERROR,
+                    )
 
-                ui.line(
-                    f"[!]: Failed to load index: {index_file}: "
-                    f"{e.report()}",
-                    ui.COLOR_ERROR,
-                )
+        cls.scan_archive(
+            save_path,
+            shared_context=data,
+            run_for_each_folder=check_for_pending,
+        )
+
+        ui.line(
+            home=False,
+            clear=False,
+        )
 
         data.sort(key=lambda x: x.id)
 
@@ -532,17 +541,56 @@ class PixivBaseDownloader:
 
         ui.line("[+]: Rebuilding pending jobs index...")
 
-        pending = cls.rebuild_index(save_path)
+        pending: list[PixivMetadata] = []
+
+        def check_for_pending(
+            data: list[PixivMetadata],
+            metadata_file: Path | None = None,
+            checkpoint_file: Path | None = None,
+        ) -> None:
+
+            if checkpoint_file is not None:
+
+                try:
+
+                    image_data = PixivMetadata()
+                    image_data.load(checkpoint_file)
+
+                    data.append(image_data)
+
+                    ui.line(
+                        f"[+]: Found @@{len(data)}@@. pending jobs.",
+                        tag_color=ui.COLOR_INFO,
+                        history=False,
+                    )
+
+                except Exception as e:
+
+                    e = PBDError.cast(e)
+
+                    ui.line(
+                        f"[!]: Failed to load job: {checkpoint_file.parent.name}: "
+                        f"{e.report()}",
+                        ui.COLOR_ERROR,
+                    )
+
+        cls.scan_archive(
+            save_path,
+            shared_context=pending,
+            run_for_each_folder=check_for_pending,
+        )
 
         if not pending:
-            ui.line(
-                "[!]: No pending jobs found.",
-                ui.COLOR_WARNING,
-            )
+
+            ui.line("[-]: No pending jobs found.")
+
             return
 
+        pending.sort(key=lambda x: x.id)
+
         ui.line(
-            f"[+]: Found {len(pending)} pending jobs."
+            f"[+]: Found @@{len(pending)}@@. pending jobs.",
+            tag_color=ui.COLOR_INFO,
         )
 
         cls.download(

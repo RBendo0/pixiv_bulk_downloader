@@ -7,6 +7,10 @@ from .const import (
     CONFIG_MAIN_FILE,
     DEFAULT_ROOT,
 )
+from .errors import (
+    InvalidDataFormat,
+    UserHasNotDefinedCustomConfiguration,
+)
 from .iofile import JsonFile
 from .ui import ui
 
@@ -74,16 +78,13 @@ class Config:
         key: str,
     ) -> Any | None:
 
-        if not cls._config_file.exists():
-            return None
-
         config = JsonFile(
             cls._config_file
         ).load()
 
         if not isinstance(config, dict):
-            raise TypeError(
-                f"Config.load() '{cls._config_file.name}': "
+            raise InvalidDataFormat(
+                "conf:load: "
                 "expected key/value format."
             )
 
@@ -95,35 +96,38 @@ class Config:
         key: str,
     ) -> None:
 
-        value = ""
-
-        if cls._config_file.exists():
+        try:
 
             config = JsonFile(
                 cls._config_file
             ).load()
 
             if not isinstance(config, dict):
-                raise TypeError(
-                    f"Config.backup() '{cls._config_file.name}': "
+                raise InvalidDataFormat(
+                    f"conf:bkup '{cls._config_file.name}': "
                     "expected key/value format."
                 )
 
-            value = cls._resolve_path(config, key, value)
+            value = cls._resolve_path(config, key, "")
 
-        if cls._backup_file.exists():
+        except UserHasNotDefinedCustomConfiguration:
+
+            value = ""
+
+        try:
 
             backup = JsonFile(
                 cls._backup_file
             ).load()
 
             if not isinstance(backup, dict):
-                raise TypeError(
-                    f"Config.backup() '{cls._backup_file.name}': "
+                raise InvalidDataFormat(
+                    f"conf:bkup '{cls._backup_file.name}': "
                     "expected key/value format."
                 )
 
-        else:
+        except UserHasNotDefinedCustomConfiguration:    
+
             backup = {}
 
         cls._set_path(backup, key, value)
@@ -141,19 +145,20 @@ class Config:
 
         cls.backup(key)
 
-        if cls._config_file.exists():
+        try:
 
             config = JsonFile(
                 cls._config_file
             ).load()
 
             if not isinstance(config, dict):
-                raise TypeError(
-                    f"Config.save() '{cls._config_file.name}': "
+                raise InvalidDataFormat(
+                    "conf:save: "
                     "expected key/value format."
                 )
 
-        else:
+        except UserHasNotDefinedCustomConfiguration:
+
             config = {}
 
         cls._set_path(config, key, value)
@@ -168,35 +173,38 @@ class Config:
         key: str,
     ) -> None:
 
-        value = ""
-
-        if cls._backup_file.exists():
+        try:
 
             backup = JsonFile(
                 cls._backup_file
             ).load()
 
             if not isinstance(backup, dict):
-                raise TypeError(
-                    f"Config.restore() '{cls._backup_file.name}': "
+                raise InvalidDataFormat(
+                    f"conf:rest '{cls._backup_file.name}': "
                     "expected key/value format."
                 )
 
-            value = cls._resolve_path(backup, key, value)
+            value = cls._resolve_path(backup, key, "")
 
-        if cls._config_file.exists():
+        except UserHasNotDefinedCustomConfiguration:
+
+            value = ""
+
+        try:
 
             config = JsonFile(
                 cls._config_file
             ).load()
 
             if not isinstance(config, dict):
-                raise TypeError(
-                    f"Config.restore() '{cls._config_file.name}': "
+                raise InvalidDataFormat(
+                    f"conf:rest '{cls._config_file.name}': "
                     "expected key/value format."
                 )
 
-        else:
+        except UserHasNotDefinedCustomConfiguration:
+
             config = {}
 
         cls._set_path(config, key, value)
@@ -204,6 +212,12 @@ class Config:
         JsonFile(
             cls._config_file
         ).save(config)
+
+        cls._set_path(backup, key, "",)
+
+        JsonFile(
+            cls._backup_file
+        ).save(backup)
 
     class Advanced:
 
@@ -291,7 +305,7 @@ class Config:
                 "If the file already exists, it will be recreated and any previous changes will be lost."            
             )
 
-            if not ui.confirm("[?]: Generate/Reset advanced settings (Y/N)"):
+            if (not ui.confirm("Generate/Reset advanced settings")):
                 return
 
             cls._generate_advanced_file()
@@ -302,14 +316,20 @@ class Config:
             key: str,
         ) -> Any | None:
 
-            if not cls._advanced_file.exists():
-                return None
-
             advanced = JsonFile(
                 cls._advanced_file
             ).load()
 
-            return Config._resolve_path(advanced, f"{key}.value")
+            if not isinstance(advanced, dict):
+                raise InvalidDataFormat(
+                    "conf:adv:load: "
+                    "expected key/value format."
+                )
+
+            return Config._resolve_path(
+                advanced,
+                f"{key}.value",
+            )
 
 
 # Alias della classe statica di configurazione

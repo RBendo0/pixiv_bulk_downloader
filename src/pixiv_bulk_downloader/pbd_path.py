@@ -8,7 +8,13 @@ from .const import (
     DEFAULT_ROOT,
     LISTS_DIR,
 )
-from .errors import PBDError
+from .errors import (
+    InvalidDataFormat,
+    JsonError,
+    PBDError,
+    UserHasNotDefinedCustomConfiguration,
+    UnableToPerformFileOperation,
+)
 from .ui import ui
 
 _BasePath = type(Path())
@@ -138,24 +144,25 @@ class StorageDirs:
     def _show_current_storage_root(cls) -> None:
 
         ui.line(
-           "[+]: Storage root located to: [ ",
-           history=False,
+           f"[+]: Storage root located to: [ @@{cls._root}@@. ]",
+           tag_color=ui.COLOR_INFO,
         )
 
-        ui.line(
-           f"{cls._root}",
-           color=ui.COLOR_INPUT,
-           home=False,
-           clear=False,
-           history=False,
-        )
+    @classmethod
+    def _mkdir(cls, path: Path) -> None:
 
-        ui.line(
-           " ]",
-           home=False,
-           clear=False,
-        )
+        # Identico al mkdir metodo della classe Path, impostato per creare la cartella se non esiste 
+        # Necessario perchè introduce una convenzione di chiamata che traduce gli errori dalla classe 
+        # OSError a PBDError
 
+        try:
+            path.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+        except OSError as e:
+            raise PBDError.hierarchy(e) from e
 
     @classmethod
     def init(
@@ -163,9 +170,16 @@ class StorageDirs:
         cli_user_root: Path | None = None,
     ) -> None:
 
+        # Controlla se c'è un percorso da riga di comando già registrato
+        # ATTENZIONE: affinché l'override del percorso specificato da riga
+        # di comando funzioni correttamente, cls._cli_user_root deve essere
+        # inizializzata a livello di classe con il valore None.        
+        if cls._cli_user_root is not None:
+            cli_user_root = cls._cli_user_root
+
         # ATTENZIONE: l'eventuale percorso indicato da riga di comando, anche all'interno dei collegamenti,
         # ha la precedenza sia sul percorso di default che su quello specificato nel file di configurazione
-        cli_user_root = cls._normalize_root(cli_user_root) if cli_user_root else None
+        actual_user_root = cli_user_root = cls._normalize_root(cli_user_root) if cli_user_root else None
 
         cls._cli_user_root = cli_user_root
  
@@ -173,53 +187,55 @@ class StorageDirs:
 
             try:
 
-                value = config.load(
-                    CONFIG_KEY_USER_ROOT
-                )
+                value = config.load(CONFIG_KEY_USER_ROOT)
 
-            except Exception as e:
+                if value is None or value == "":
 
-                e = PBDError.cast(e)
+                    actual_user_root = None
+
+                elif isinstance(value, str):
+
+                    actual_user_root = cls._normalize_root(Path(value))
+
+                else:
+
+                    raise InvalidDataFormat()
+
+            except UserHasNotDefinedCustomConfiguration:
+
+                actual_user_root = None
+
+            except JsonError as e:
 
                 ui.line(
-                    f"[!]: Failed to load storage path: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e}",
+                    "[!]: Failed to load storage path.",
                     ui.COLOR_ERROR,
                 )
 
-                # Il percorso non può essere determinato da una
-                # configurazione illeggibile. Ripristina quindi
-                # l'ultimo valore valido e tenta nuovamente la lettura.
-                config.restore(
-                    CONFIG_KEY_USER_ROOT
-                )
-
-                value = config.load(
-                    CONFIG_KEY_USER_ROOT
+                ui.line(
+                    f"     {e.report()}",
+                    ui.COLOR_ERROR,
                 )
 
                 ui.line(
-                    "[+]: Storage path restored "
-                    "from previous settings.",
+                    "     Storage path will be set to default.",
                     ui.COLOR_WARNING,
                 )
 
-            if isinstance(value, str) and value:
-                cli_user_root = cls._normalize_root(Path(value))
+                actual_user_root = None
 
-        cls._user_root = cli_user_root
+        cls._user_root = actual_user_root
 
         cls._root = (
-            cli_user_root
-            if cli_user_root is not None
+            actual_user_root
+            if actual_user_root is not None
             else cls._default_root
         )
 
         cls._bookmarks = cls._root / BOOKMARKS_DIR
         cls._lists = cls._root / LISTS_DIR
 
-        cls._lists.mkdir(
+        (cls._default_root / LISTS_DIR).mkdir(
             parents=True,
             exist_ok=True,
         )            
@@ -325,7 +341,45 @@ class StorageDirs:
                     ui.COLOR_ERROR,
                 )
 
-        cls.init(cls._cli_user_root)
+
+
+
+
+
+
+                # Il percorso non può essere determinato da una
+                # configurazione illeggibile. Ripristina quindi
+                # l'ultimo valore valido e tenta nuovamente la lettura.
+                config.restore(
+                    CONFIG_KEY_USER_ROOT
+                )
+
+                value = config.load(
+                    CONFIG_KEY_USER_ROOT
+                )
+
+                ui.line(
+                    "[+]: Storage path restored "
+                    "from previous settings.",
+                    ui.COLOR_WARNING,
+                )
+
+
+
+        cls._lists.mkdir(
+            parents=True,
+            exist_ok=True,
+        )            
+
+
+
+
+
+
+
+
+
+        cls.init()
 
     @classmethod
     def default_root(cls) -> Path:
