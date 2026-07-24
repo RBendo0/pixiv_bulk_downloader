@@ -591,7 +591,7 @@ class UI:
 
         cls.clear_lines(1)
 
-        return choice == cls.KEY_ENTER
+        return choice == default
 
     @classmethod
     def poll_key(

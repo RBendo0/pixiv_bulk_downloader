@@ -6,7 +6,10 @@ from pathlib import Path
 from .animation import m3
 from .bookmarks import pbd
 from .config import config
-from .errors import LoginFailedError
+from .errors import (
+    LoginFailedError,
+    PBDError,
+)
 from .pbd_path import sd
 from .pbd_types import CommandLineOptions
 from .pixiv_call_api import caapi
@@ -113,7 +116,17 @@ def main() -> None:
 
         _main()
 
+    except PBDError as e:
+        ui.line(
+            f"[!]: Fatal error: {e.report()}",
+            ui.COLOR_ERROR,
+        )
+
     except (KeyError, LoginFailedError) as e:
+        # TODO: LoginFailedError è un refuso della vecchia applicazione.
+        # Non veniva lanciato da nessuna parte. Attualmente è ridefinito
+        # in errors.py come sottoclasse di ApiError.
+        # Verrà rivisto durante il refactoring di MyGPPT e del login.
 
         ui.line(
             f"[!]: {type(e).__name__}: {e}",

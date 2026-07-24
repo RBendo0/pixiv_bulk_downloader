@@ -143,8 +143,6 @@ class Config:
         value: Any,
     ) -> None:
 
-        cls.backup(key)
-
         try:
 
             config = JsonFile(

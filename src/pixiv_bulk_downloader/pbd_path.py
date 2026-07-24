@@ -235,19 +235,18 @@ class StorageDirs:
         cls._bookmarks = cls._root / BOOKMARKS_DIR
         cls._lists = cls._root / LISTS_DIR
 
-        (cls._default_root / LISTS_DIR).mkdir(
-            parents=True,
-            exist_ok=True,
-        )            
+        # Genera la Directory principale e la sottocartella \lists
+        # in caso di errore traduce l'eccezione nella classe PBDError
+        cls._mkdir(cls._lists)
 
         cls._show_current_storage_root()
 
     @classmethod
     def config_root_dir(cls) -> None:
 
-        if cls._cli_user_root is not None:
+        ui.line()
 
-            ui.line()
+        if cls._cli_user_root is not None:
 
             ui.line(
                 "[!]: The storage path cannot be changed while "
@@ -261,125 +260,146 @@ class StorageDirs:
                 "path and the configuration file settings."
             )
 
-        else:
+            cls._show_current_storage_root()
 
-            ui.line()
+            return
 
-            ui.line(
-                "[i]: Enter new storage path "
-                "(leave empty for default path)."
-            )
+        ui.line(
+            "[i]: Enter new storage path "
+            "(leave empty for default path)."
+        )
 
-            ui.line(
-                "[i]: Changes will take effect "
-                "after pressing Enter."
-            )
+        ui.line(
+            "[i]: Changes will take effect "
+            "after pressing Enter."
+        )
 
-            root = ui.input_string(
-                prompt="[?]: Root",
-                default=str(cls._root),
-            )
+        root = ui.input_string(
+            prompt="[?]: Root",
+            default=str(cls._root),
+        )
 
-            ui.clear_lines(1)
+        ui.clear_lines(1)
 
-            # Il file di configurazione distingue due casi:
-            # - ""     -> usa il percorso predefinito;
-            # - Path() -> usa un percorso personalizzato.
-            #
-            # Path("") rappresenta la directory corrente ("."),
-            # non il percorso predefinito. Per questo il caso
-            # della stringa vuota viene gestito separatamente.
-            root = Path(root) if root else ""
+        # Il file di configurazione distingue due casi:
+        # - ""     -> usa il percorso predefinito;
+        # - Path() -> usa un percorso personalizzato.
+        #
+        # Path("") rappresenta la directory corrente ("."),
+        # non il percorso predefinito. Per questo il caso
+        # della stringa vuota viene gestito separatamente.
+        root = Path(root) if root else ""
 
-            # Verifica che il nuovo percorso di archiviazione sia
-            # utilizzabile prima di salvarlo nella configurazione.
-            #
-            # mkdir() svolge due funzioni:
-            # - valida il percorso;
-            # - crea la directory se non esiste.
-            if root:
+        # Verifica che il nuovo percorso di archiviazione sia
+        # utilizzabile prima di salvarlo nella configurazione.
+        #
+        # mkdir() svolge due funzioni:
+        # - valida il percorso;
+        # - crea la directory se non esiste.
+        if root:
 
-                root = cls._normalize_root(root)
-
-                try:
-
-                    root.mkdir(
-                        parents=True,
-                        exist_ok=True,
-                    )
-
-                except Exception as e:
-
-                    e = PBDError.cast(e)
-
-                    ui.line(
-                        f"[!]: Failed to set storage path: "
-                        f"{e.info()}: "
-                        f"{type(e).__name__}: {e}",
-                        ui.COLOR_ERROR,
-                    )
-
-                    cls._show_current_storage_root()
-
-                    return
+            root = cls._normalize_root(root)
 
             try:
 
-                config.save(
-                    CONFIG_KEY_USER_ROOT,
-                    str(root),
-                )
+                cls._mkdir(root)
 
-            except Exception as e:
-
-                e = PBDError.cast(e)
+            except UnableToPerformFileOperation as e:
 
                 ui.line(
-                    f"[!]: Failed to save storage path: "
-                    f"{e.info()}: "
-                    f"{type(e).__name__}: {e}",
+                    f"[!]: Failed to set storage path: "
+                    f"{e.report()}",
                     ui.COLOR_ERROR,
                 )
 
+                cls._show_current_storage_root()
 
+                return
 
+        backup_available = False
 
+        try:
 
+            config.backup(CONFIG_KEY_USER_ROOT)
 
+        except JsonError as e:
 
-                # Il percorso non può essere determinato da una
-                # configurazione illeggibile. Ripristina quindi
-                # l'ultimo valore valido e tenta nuovamente la lettura.
-                config.restore(
-                    CONFIG_KEY_USER_ROOT
-                )
+            ui.line(
+                f"[!]: Unable to create a backup of the current configuration: "
+                f"{e.report()}",
+                ui.COLOR_WARNING,
+            )
 
-                value = config.load(
-                    CONFIG_KEY_USER_ROOT
-                )
+        else:
+
+            backup_available = True
+
+        try:
+
+            config.save(
+                CONFIG_KEY_USER_ROOT,
+                str(root),
+            )
+
+        except JsonError as e:
+
+            ui.line(
+                f"[!]: Unable to save the new storage path: "
+                f"{e.report()}",
+                ui.COLOR_ERROR,
+            )
+
+            ui.line(
+                "[!]: The configuration file may have been damaged.",
+                ui.COLOR_ERROR,
+            )
+
+            if backup_available:
 
                 ui.line(
-                    "[+]: Storage path restored "
-                    "from previous settings.",
-                    ui.COLOR_WARNING,
+                    "[+]: The previous settings can be restored. Proceed?",
                 )
 
+                if (
+                    not ui.confirm(
+                        "Press ESC to skip this step",
+                        default=ui.KEY_ESCAPE,
+                    )
+                ):
 
+                    try:
 
-        cls._lists.mkdir(
-            parents=True,
-            exist_ok=True,
-        )            
+                        config.restore(CONFIG_KEY_USER_ROOT)
 
+                    except JsonError as e:
 
+                        ui.line(
+                            f"[!]: Unable to restore previous settings: "
+                            f"{e.report()}",
+                            ui.COLOR_ERROR,
+                        )
 
+                    else:    
 
+                        ui.line(
+                            "[+]: Previous settings restored. "
+                        )
 
+            cls._show_current_storage_root()
 
+            return
 
+        try:
 
+            cls.init()
 
-        cls.init()
+        except UnableToPerformFileOperation as e:
+
+            ui.line(
+                f"[!]: Path init failed: "
+                f"{e.report()}",
+                ui.COLOR_ERROR,
+            )
 
     @classmethod
     def default_root(cls) -> Path:

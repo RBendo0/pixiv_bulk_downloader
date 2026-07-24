@@ -1,95 +1,42 @@
 # ROADMAP
 
-## Stato del progetto
+## Stato attuale
 
-L'architettura principale è sostanzialmente completata.
+L’architettura principale è sostanzialmente completata.
+Sono operativi il sistema concorrente, il renderer, i principali workflow di download, la configurazione persistente e la gestione della Storage Root.
 
-La fase corrente è dedicata al completamento del supporto alle ugoira e al consolidamento dell'intero workflow di download.
+La fase corrente riguarda il completamento del porting alla nuova gestione degli errori e l’integrazione della conversione delle ugoira.
 
-## Milestone completate
+## Breve termine
 
-* Architettura applicativa
-* Thread Pool System (TPS)
-* Renderer concorrente
-* Workflow di download multi-thread
-* Gestione unificata degli errori
-* Sistema di configurazione persistente
-* Gestione della Storage Root
-* Refactoring della configurazione multimediale
-* Migrazione delle impostazioni a dataclass
-* Configurazione dei codec avanzati
-* Collaudo del nuovo sistema di configurazione
+* Completare il porting degli errori nei moduli residui, a partire da `animation`.
+* Collaudare `StorageDirs`: default, configurazione, CLI e rami di errore simulati.
+* Completare `MultiMediaManager`.
+* Implementare conversione ugoira in GIF e WebM.
+* Integrare la conversione nel workflow di download.
+* Eseguire il collaudo generale dei workflow principali.
+* Commit completo e aggiornamento di roadmap, Decision Log e documentazione.
 
----
+## Medio termine
 
-# 1. Conversione ugoira (fase corrente)
+* Rifattorizzare completamente il login e la gestione della sessione.
+* Rifattorizzare il flusso UI degli errori con messaggi multilinea e dettagli indentati.
+* Uniformare la gestione delle eccezioni prodotte dalle librerie esterne.
+* Consolidare build, dipendenze e struttura dell’eseguibile.
+* Rimuovere codice obsoleto e completare i test automatici.
 
-Completare il modulo `MultiMediaManager` e integrarlo nel downloader.
+## Lungo termine
 
-Attività immediate:
+* Introdurre una classe centralizzata di debug e test.
+* Esporre flag per sottosistema e metodi per simulare errori o comportamenti specifici.
+* Automatizzare i test dei percorsi di errore.
+* Convertire gli ZIP ugoira già presenti nell’archivio.
+* Aggiungere backup automatici dei file operativi.
+* Valutare supporto MP4 e ulteriori miglioramenti UI e prestazionali.
 
-* completamento di `set_preferred_media_formats()`;
-* caricamento delle immagini dell'ugoira;
-* costruzione della sequenza di `AnimationFrame`;
-* generazione GIF;
-* generazione WebM;
-* integrazione della conversione nel workflow di download;
-* collaudo completo della pipeline.
+## Pubblicazione
 
----
-
-# 2. Consolidamento architetturale
-
-Completare il disaccoppiamento dai componenti esterni e rifinire i punti di integrazione.
-
----
-
-# 3. Revisione del login
-
-Consolidare autenticazione, gestione della sessione e presentazione degli errori.
-
----
-
-# 4. Revisione delle librerie esterne
-
-Uniformare l'integrazione con PixivPy3, Playwright, my_gppt e FFmpeg.
-
----
-
-# 5. Collaudo generale
-
-Validare tutti i workflow dell'applicazione:
-
-* download;
-* resume;
-* missing;
-* chrono;
-* add bookmarks;
-* conversione ugoira;
-* configurazione.
-
----
-
-# 6. Documentazione
-
-Aggiornare Decision Log, roadmap e documentazione tecnica.
-
----
-
-# 7. Pubblicazione
-
-* verifica del repository pubblico;
-* aggiornamento della documentazione online;
-* preparazione del primo rilascio pubblico.
-
----
-
-# 8. Evoluzioni future
-
-Attività non prioritarie:
-
-* conversione automatica degli archivi ZIP delle ugoira;
-* backup automatico dei file operativi;
-* miglioramenti della UI;
-* ottimizzazioni prestazionali;
-* funzionalità aggiuntive.
+* Verificare il repository pubblico.
+* Aggiornare la documentazione online.
+* Pubblicare un avviso sullo stato del progetto.
+* Preparare il primo rilascio stabile.
