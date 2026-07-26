@@ -380,7 +380,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiRateLimitError as e:
 
                 ui.line(
-                    f"[!]: {e.report(err_type=False)} | "
+                    f"[!]: {e.report(with_message=False)} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_WARNING,
@@ -403,7 +403,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiError as e:
 
                 ui.line(
-                    f"[!]: {e.report(err_type=False)} | "
+                    f"[!]: {e.report(with_message=False)} | "
                     f"Last artwork: "
                     f"{urls[-1].id if urls else 'N/A'}",
                     ui.COLOR_ERROR,
@@ -519,7 +519,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         )
 
                         ui.line(
-                            f"[!]: {e.report(err_type=False)} | "
+                            f"[!]: {e.report(with_message=False)} | "
                             f"Artwork: <ID:{illust.id}> "
                             f"{illust.title}",
                             ui.COLOR_WARNING,
@@ -752,7 +752,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 )
 
                                 ui.line(
-                                    f"[!]: {e.report(err_type=False)}",
+                                    f"[!]: {e.report(with_message=False)}",
                                     ui.COLOR_WARNING,
                                     home=False,
                                     clear=False,

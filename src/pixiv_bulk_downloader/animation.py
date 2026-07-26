@@ -8,6 +8,12 @@ from .const import (
     DEFAULT_CODEC_SETTINGS,
     DEFAULT_PREFERRED_MEDIA_FORMATS,
 )
+from .errors import (
+    InvalidDataFormat,
+    JsonError,
+    PBDError,
+    UserHasNotDefinedCustomConfiguration,
+)
 from .pbd_types import (
     AnimationFrame,
     CodecSettings,
@@ -34,45 +40,104 @@ class MultiMediaManager:
 
         cls._preferred_media_formats = replace(DEFAULT_PREFERRED_MEDIA_FORMATS)
 
-        preferred_media_formats = config.load(
-            CONFIG_KEY_PREF_MEDIA
-        )
+        try:
 
-        if (
-            isinstance(preferred_media_formats, dict)
-            and any(preferred_media_formats)
-        ):
-
-            cls._preferred_media_formats = PreferredMediaFormats(
-                **preferred_media_formats
+            preferred_media_formats = config.load(
+                CONFIG_KEY_PREF_MEDIA
             )
 
+            if preferred_media_formats is None:
+
+                return
+
+            try:
+
+                cls._preferred_media_formats = PreferredMediaFormats(
+                    **preferred_media_formats
+                )
+
+            except (TypeError, ValueError) as e:
+
+                raise PBDError.hierarchy(e) from e
+
+        except UserHasNotDefinedCustomConfiguration:
+
+            return
+
+        except JsonError as e:
+
+            ui.line(
+                "[!]: Failed to load preferences about media formats.",
+                ui.COLOR_ERROR,
+            )
+
+            ui.line(
+                f"     {e.report()}",
+                ui.COLOR_ERROR,
+            )
+
+            ui.line(
+                "[+]: Preferred formats will be set to default.",
+                ui.COLOR_WARNING,
+            )
+
+    @classmethod
+    def _load_codec_setting(
+        cls,
+        key: str,
+    ) -> str | None:
+
+        try:
+
+            codec_setting = config.Advanced.load(key)
+
+            if codec_setting is None or codec_setting == "":
+                raise UserHasNotDefinedCustomConfiguration()
+
+            elif not isinstance(codec_setting, str):
+                raise InvalidDataFormat()
+
+            else:
+                return codec_setting
+
+        except UserHasNotDefinedCustomConfiguration:
+
+            pass
+
+        except JsonError as e:
+
+            ui.line(
+                f"[!]: Failed to load [@@{key}@@.], "
+                " codec will be set to default.",
+                ui.COLOR_WARNING,
+                tag_color=ui.COLOR_ERROR,
+            )
+
+            ui.line(
+                f"     {e.report()}",
+                ui.COLOR_ERROR,
+            )
+
+        return None
+    
     @classmethod
     def _load_media_codecs(cls) -> None:
 
         cls._codec = replace(DEFAULT_CODEC_SETTINGS) 
 
-        webm_codec = config.Advanced.load(
+        webm_codec = cls._load_codec_setting(
             ADVANCED_KEY_WEBM_CODEC
         )
 
-        mp4_codec = config.Advanced.load(
+        mp4_codec = cls._load_codec_setting(
             ADVANCED_KEY_MP4_CODEC
         )
 
-        if (
-            isinstance(webm_codec, str)
-            and webm_codec
-        ):
+        if webm_codec is not None:
+            cls._codec.webm = webm_codec 
 
-            cls._codec.webm = webm_codec
-
-        if (
-            isinstance(mp4_codec, str)
-            and mp4_codec
-        ):
-
-            cls._codec.mp4 = mp4_codec
+        if mp4_codec is not None:
+            cls._codec.mp4 = mp4_codec 
 
     @classmethod
     def _pmfs_to_togo(
@@ -129,11 +194,11 @@ class MultiMediaManager:
     def set_preferred_media_formats(cls) -> None:
 
         ui.line()
-        ui.line("[i]: Selezionare i singoli formati di salvataggio delle animazioni")
-        ui.line("[i]: premendo il tasto del numero associato alla rispettiva voce menu.")
-        ui.line("[i]: Nessuna selezione imposta formati di default")
-        ui.line("[i]: [SPAZIO] ripristina impostazioni precedenti")
-        ui.line("[i]: [INVIO] per confermare")
+        ui.line("[+]: Selezionare i singoli formati di salvataggio delle animazioni")
+        ui.line("     premendo il tasto del numero associato alla rispettiva voce menu.")
+        ui.line("     Nessuna selezione imposta formati di default")
+        ui.line("[-]: [SPAZIO] ripristina impostazioni precedenti")
+        ui.line("[+]: [INVIO] per confermare")
         ui.line()
         
         options = cls._pmfs_to_togo(
@@ -144,18 +209,27 @@ class MultiMediaManager:
             options,
         )
 
-        cls._preferred_media_formats = cls._togo_to_pmfs(
+        ui.clear_lines(6)
+
+        new_preferred_media_formats = cls._togo_to_pmfs(
             options
         )
 
-        config.save(
-            CONFIG_KEY_PREF_MEDIA,
-            asdict(cls._preferred_media_formats),
-        )
+        cls._preferred_media_formats = new_preferred_media_formats
 
-        ui.clear_lines(6)
+        if not config.save_with_interact(
+            key=CONFIG_KEY_PREF_MEDIA,
+            value=asdict(new_preferred_media_formats),
+            subject="preferred media formats"
+        ):
 
-        cls.init()
+            ui.line(
+                "[+]: The new preferences will remain active "
+                "for the current session only.",
+                ui.COLOR_WARNING,
+            )
+
+        cls._show_current_media_settings()
 
     @classmethod
     def load_images(cls):

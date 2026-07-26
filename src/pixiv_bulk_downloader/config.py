@@ -9,6 +9,7 @@ from .const import (
 )
 from .errors import (
     InvalidDataFormat,
+    JsonError,
     UserHasNotDefinedCustomConfiguration,
 )
 from .iofile import JsonFile
@@ -94,7 +95,7 @@ class Config:
     def backup(
         cls,
         key: str,
-    ) -> None:
+    ) -> bool:
 
         try:
 
@@ -112,7 +113,8 @@ class Config:
 
         except UserHasNotDefinedCustomConfiguration:
 
-            value = ""
+            # Non Serve salvare un backup se il file di configurazione non esiste
+            return False
 
         try:
 
@@ -135,6 +137,8 @@ class Config:
         JsonFile(
             cls._backup_file
         ).save(backup)
+
+        return True
 
     @classmethod
     def save(
@@ -187,7 +191,8 @@ class Config:
 
         except UserHasNotDefinedCustomConfiguration:
 
-            value = ""
+            # Se il file di backup non esiste, non ripristina nessuna chiave
+            return
 
         try:
 
@@ -216,6 +221,84 @@ class Config:
         JsonFile(
             cls._backup_file
         ).save(backup)
+
+    @classmethod
+    def save_with_interact(
+        cls,
+        *,
+        key: str,
+        value: Any,
+        subject: str,
+    ) -> bool:
+
+        backup_available = False
+
+        try:
+
+            backup_available = config.backup(key)
+
+        except JsonError as e:
+
+            e.notify(
+                "Unable to create a backup of the current configuration.",
+                with_report=True,
+            )
+
+        try:
+
+            config.save(key, value)
+
+        except JsonError as e:
+
+            e.notify(
+                f"Unable to save the new {subject}.",
+                with_report=True,
+            )
+
+            ui.line(
+                "[!]: The configuration file may have been damaged.",
+                ui.COLOR_ERROR,
+            )
+
+            if backup_available:
+
+                ui.line(
+                    "[+]: The previous settings can be restored. Proceed?",
+                )
+
+                if (
+                    not ui.confirm(
+                        "Press ESC to skip this step",
+                        default=ui.KEY_ESCAPE,
+                    )
+                ):
+
+                    try:
+
+                        config.restore(key)
+
+                    except JsonError as e:
+
+                        e.notify(
+                            "Unable to restore previous settings.",
+                            with_report=True,
+                        )
+
+                    else:    
+
+                        ui.line(
+                            "[+]: Previous settings restored. "
+                        )
+
+                else:
+
+                    ui.line(
+                        "[-]: Previous settings discarded"
+                    )
+
+            return False
+
+        return True
 
     class Advanced:
 

@@ -1,0 +1,4 @@
+C:/Users/pc/source/python/progetti/pixiv_bulk_downloader/build/encoder/CMakeFiles/pbd_encoder.dir
+C:/Users/pc/source/python/progetti/pixiv_bulk_downloader/build/encoder/CMakeFiles/pbd_encoder_test.dir
+C:/Users/pc/source/python/progetti/pixiv_bulk_downloader/build/encoder/CMakeFiles/ALL_BUILD.dir
+C:/Users/pc/source/python/progetti/pixiv_bulk_downloader/build/encoder/CMakeFiles/ZERO_CHECK.dir

@@ -316,74 +316,11 @@ class StorageDirs:
 
                 return
 
-        backup_available = False
-
-        try:
-
-            config.backup(CONFIG_KEY_USER_ROOT)
-
-        except JsonError as e:
-
-            ui.line(
-                f"[!]: Unable to create a backup of the current configuration: "
-                f"{e.report()}",
-                ui.COLOR_WARNING,
-            )
-
-        else:
-
-            backup_available = True
-
-        try:
-
-            config.save(
-                CONFIG_KEY_USER_ROOT,
-                str(root),
-            )
-
-        except JsonError as e:
-
-            ui.line(
-                f"[!]: Unable to save the new storage path: "
-                f"{e.report()}",
-                ui.COLOR_ERROR,
-            )
-
-            ui.line(
-                "[!]: The configuration file may have been damaged.",
-                ui.COLOR_ERROR,
-            )
-
-            if backup_available:
-
-                ui.line(
-                    "[+]: The previous settings can be restored. Proceed?",
-                )
-
-                if (
-                    not ui.confirm(
-                        "Press ESC to skip this step",
-                        default=ui.KEY_ESCAPE,
-                    )
-                ):
-
-                    try:
-
-                        config.restore(CONFIG_KEY_USER_ROOT)
-
-                    except JsonError as e:
-
-                        ui.line(
-                            f"[!]: Unable to restore previous settings: "
-                            f"{e.report()}",
-                            ui.COLOR_ERROR,
-                        )
-
-                    else:    
-
-                        ui.line(
-                            "[+]: Previous settings restored. "
-                        )
+        if not config.save_with_interact(
+            key=CONFIG_KEY_USER_ROOT,
+            value=str(root),
+            subject="storage path"
+        ):
 
             cls._show_current_storage_root()
 
@@ -396,8 +333,12 @@ class StorageDirs:
         except UnableToPerformFileOperation as e:
 
             ui.line(
-                f"[!]: Path init failed: "
-                f"{e.report()}",
+                "[!]: Path init failed: ",
+                ui.COLOR_ERROR,
+            )
+
+            ui.line(
+                f"    {e.report()}",
                 ui.COLOR_ERROR,
             )
 

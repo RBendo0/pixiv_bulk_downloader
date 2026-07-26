@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\pc\source\python\progetti\pixiv_bulk_downloader\build\encoder\CMakeFiles\77023b9a57233b6951989e0ee7986e35\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{6BEB999D-7EB0-36E0-B5F5-AC2C0F2D739C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

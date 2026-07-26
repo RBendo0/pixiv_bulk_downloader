@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\pc\source\python\progetti\pixiv_bulk_downloader\csrc\encoder\encoder.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\pc\source\python\progetti\pixiv_bulk_downloader\csrc\encoder\ffmpeg_internal.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\pc\source\python\progetti\pixiv_bulk_downloader\csrc\encoder\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{3CD74E7C-42FB-345C-8364-13E0CB645D7A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -142,13 +142,32 @@ class PBDError(Exception):
     def report(
         self,
         *,
-        err_type: bool = True,
+        with_message: bool = True,
     ) -> str:
 
         return (
             f"{self.info()}"
-            + (f": {self}" if err_type and str(self) else "")
+            + (f": {self}" if with_message and str(self) else "")
         )
+
+    def notify(
+        self,
+        message: str,
+        *,
+        with_report: bool = False,
+    ) -> None:
+
+        ui.line(
+            f"[!]: {message}",
+            ui.COLOR_ERROR
+        )
+
+        if with_report:
+
+            ui.line(
+                f"    {self.report()}",
+                ui.COLOR_ERROR,
+            )    
 
     @classmethod
     def hierarchy(cls, e: Exception) -> "PBDError":
