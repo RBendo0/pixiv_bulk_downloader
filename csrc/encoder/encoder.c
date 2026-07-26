@@ -24,14 +24,12 @@ EncoderContext *encoder_init(void) {
 /*--------------------------------------------------------------*/
 
 int encoder_start(EncoderContext *ctx, const char *output_file,
-                  const char *format, const char *codec,
-                  const uint32_t *palette, size_t palette_size) {
+                  const char *format, const char *codec) {
   if (ctx == NULL) {
     return -1;
   }
 
-  return ffmpeg_encoder_open(ctx, output_file, format, codec, palette,
-                             palette_size);
+  return ffmpeg_encoder_open(ctx, output_file, format, codec);
 }
 
 /*--------------------------------------------------------------*/

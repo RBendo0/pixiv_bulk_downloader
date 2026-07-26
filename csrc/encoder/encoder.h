@@ -74,8 +74,7 @@ EncoderContext *encoder_init(void);
  *          "libx265"
  */
 int encoder_start(EncoderContext *ctx, const char *output_file,
-                  const char *format, const char *codec,
-                  const uint32_t *palette, size_t palette_size);
+                  const char *format, const char *codec);
 
 /*
  * Adds one compressed image frame.

@@ -15,8 +15,10 @@ extern "C" {
 */
 
 #include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+
 #include <libavutil/imgutils.h>
 #include <libavutil/rational.h>
 #include <libswscale/swscale.h>
@@ -63,6 +65,24 @@ typedef struct EncoderContext {
   const AVCodec *video_codec;
 
   AVCodecContext *video_encoder;
+
+  /*
+  -------------------------------------------------------------
+      GIF filter graph
+
+      The graph converts decoded image frames into PAL8 frames
+      through FFmpeg's palettegen and paletteuse filters.
+
+      These fields remain NULL for video encoders that do not
+      require the GIF filtering pipeline.
+  -------------------------------------------------------------
+  */
+
+  AVFilterGraph *filter_graph;
+
+  AVFilterContext *buffersrc_ctx;
+
+  AVFilterContext *buffersink_ctx;
 
   /*
   -------------------------------------------------------------
@@ -132,19 +152,11 @@ typedef struct EncoderContext {
 
   enum AVPixelFormat pixel_format;
 
-  /*
-  -------------------------------------------------------------
-      GIF palette
+  AVRational sample_aspect_ratio;
 
-      A size of zero means that no external palette was supplied.
-      In that case, GIF frame preparation will generate its own
-      palette.
-  -------------------------------------------------------------
-  */
+  enum AVColorSpace color_space;
 
-  uint32_t gif_palette[256];
-
-  size_t gif_palette_size;
+  enum AVColorRange color_range;
 
   /*
   -------------------------------------------------------------
@@ -182,8 +194,7 @@ typedef struct EncoderContext {
  * Opens a new encoding session.
  */
 int ffmpeg_encoder_open(EncoderContext *ctx, const char *output_file,
-                        const char *format, const char *codec,
-                        const uint32_t *palette, size_t palette_size);
+                        const char *format, const char *codec);
 
 /*
  * Decodes one compressed image and encodes one video frame.
@@ -213,7 +224,7 @@ int ffmpeg_open_video_encoder(EncoderContext *ctx);
 
 int ffmpeg_decode_image(EncoderContext *ctx, const void *data, size_t size);
 
-int ffmpeg_encode_frame(EncoderContext *ctx, uint32_t duration_ms);
+int ffmpeg_encode_frame(EncoderContext *ctx);
 
 int ffmpeg_flush_encoder(EncoderContext *ctx);
 

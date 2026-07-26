@@ -16,6 +16,9 @@
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
 
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+
 /*
 =====================================================================
     Internal constants
@@ -31,8 +34,12 @@
 =====================================================================
 */
 
+static int ffmpeg_open_gif_filter_graph(EncoderContext *ctx);
+static int ffmpeg_flush_gif_filter_graph(EncoderContext *ctx);
+static int ffmpeg_create_sws_context(EncoderContext *ctx);
 static int ffmpeg_prepare_video_frame(EncoderContext *ctx);
 static int ffmpeg_prepare_encoder_frame(EncoderContext *ctx);
+static void ffmpeg_normalize_decoded_frame(AVFrame *frame);
 
 /*
  * Safely copies a C string into a fixed-size destination buffer.
@@ -48,9 +55,7 @@ static void copy_string(char *destination, size_t destination_size,
     return;
   }
 
-  strncpy(destination, source, destination_size - 1);
-
-  destination[destination_size - 1] = '\0';
+  snprintf(destination, destination_size, "%s", source);
 }
 
 /*
@@ -135,8 +140,7 @@ static int ffmpeg_configure_video_encoder(EncoderContext *ctx) {
  * Initializes one encoding session.
  */
 int ffmpeg_encoder_open(EncoderContext *ctx, const char *output_file,
-                        const char *format, const char *codec,
-                        const uint32_t *palette, size_t palette_size) {
+                        const char *format, const char *codec) {
 
   if (ctx == NULL) {
     return PBD_ERROR;
@@ -149,16 +153,6 @@ int ffmpeg_encoder_open(EncoderContext *ctx, const char *output_file,
   copy_string(ctx->format_name, sizeof(ctx->format_name), format);
 
   copy_string(ctx->codec_name, sizeof(ctx->codec_name), codec);
-
-  if (palette != NULL && palette_size > 0) {
-    if (palette_size > 256) {
-      palette_size = 256;
-    }
-
-    memcpy(ctx->gif_palette, palette, palette_size * sizeof(uint32_t));
-
-    ctx->gif_palette_size = palette_size;
-  }
 
   ctx->time_base.num = 1;
   ctx->time_base.den = 1000;
@@ -183,9 +177,9 @@ int ffmpeg_encoder_open(EncoderContext *ctx, const char *output_file,
 }
 
 /*
- * ???????????????????????????????????????????
+ * Decodes and submits one compressed image frame to the selected
+ * encoding pipeline.
  */
-
 int ffmpeg_encoder_add_frame(EncoderContext *ctx, const void *data, size_t size,
                              uint32_t duration_ms) {
   int result;
@@ -200,13 +194,50 @@ int ffmpeg_encoder_add_frame(EncoderContext *ctx, const void *data, size_t size,
     return result;
   }
 
+  if (strcmp(ctx->codec_name, "gif") == 0) {
+    if (ctx->filter_graph == NULL) {
+      result = ffmpeg_open_gif_filter_graph(ctx);
+
+      if (result != PBD_SUCCESS) {
+        return result;
+      }
+    }
+
+    ctx->decoded_frame->pts = ctx->current_pts;
+
+    result = av_buffersrc_add_frame_flags(
+        ctx->buffersrc_ctx, ctx->decoded_frame, AV_BUFFERSRC_FLAG_KEEP_REF);
+
+    if (result < 0) {
+      return PBD_ERROR;
+    }
+
+    ctx->current_pts += duration_ms;
+    ctx->current_time_ms += duration_ms;
+    ++ctx->frame_count;
+
+    return PBD_SUCCESS;
+  }
+
   result = ffmpeg_prepare_encoder_frame(ctx);
 
   if (result != PBD_SUCCESS) {
     return result;
   }
 
-  return ffmpeg_encode_frame(ctx, duration_ms);
+  ctx->encoder_frame->pts = ctx->current_pts;
+
+  result = ffmpeg_encode_frame(ctx);
+
+  if (result != PBD_SUCCESS) {
+    return result;
+  }
+
+  ctx->current_pts += duration_ms;
+  ctx->current_time_ms += duration_ms;
+  ++ctx->frame_count;
+
+  return PBD_SUCCESS;
 }
 
 /*
@@ -351,8 +382,6 @@ int ffmpeg_open_container(EncoderContext *ctx) {
  */
 int ffmpeg_open_image_decoder(EncoderContext *ctx, const void *data,
                               size_t size) {
-  const AVCodecDescriptor *descriptor;
-  const AVCodecParameters *parameters = NULL;
   AVProbeData probe;
 
   int result;
@@ -392,23 +421,6 @@ int ffmpeg_open_image_decoder(EncoderContext *ctx, const void *data,
     return PBD_ERROR;
   }
 
-  /*
-  -------------------------------------------------------------
-      Retrieve the codec descriptor associated with the detected
-      demuxer.
-  -------------------------------------------------------------
-  */
-  /*
-  #if LIBAVFORMAT_VERSION_MAJOR >= 59
-
-    parameters = input_format->codec_tag;
-
-  #else
-
-    parameters = NULL;
-
-  #endif
-  */
   /*
   -------------------------------------------------------------
       Determine the decoder to use.
@@ -624,12 +636,199 @@ int ffmpeg_open_video_encoder(EncoderContext *ctx) {
 }
 
 /*
+ * Creates the GIF filtering pipeline.
+ *
+ * Decoded frames enter through buffersrc and are split into two
+ * branches. One branch generates the global palette; the other is
+ * synchronized with that palette by paletteuse. The final PAL8 frames
+ * are exposed through buffersink.
+ */
+static int ffmpeg_open_gif_filter_graph(EncoderContext *ctx) {
+  static const char *filter_description = "[in]split[frames][palette_input];"
+                                          "[palette_input]palettegen[palette];"
+                                          "[frames][palette]paletteuse[out]";
+
+  const AVFilter *buffer_filter;
+  const AVFilter *buffersink_filter;
+
+  AVFilterInOut *inputs;
+  AVFilterInOut *outputs;
+
+  char buffer_arguments[256];
+
+  int result;
+
+  if (ctx == NULL || ctx->width <= 0 || ctx->height <= 0 ||
+      ctx->pixel_format == AV_PIX_FMT_NONE) {
+    return PBD_ERROR;
+  }
+
+  if (ctx->filter_graph != NULL) {
+    return PBD_SUCCESS;
+  }
+
+  buffer_filter = avfilter_get_by_name("buffer");
+  buffersink_filter = avfilter_get_by_name("buffersink");
+
+  if (buffer_filter == NULL || buffersink_filter == NULL) {
+    return PBD_ERROR;
+  }
+
+  ctx->filter_graph = avfilter_graph_alloc();
+
+  if (ctx->filter_graph == NULL) {
+    return PBD_ERROR;
+  }
+
+  snprintf(buffer_arguments, sizeof(buffer_arguments),
+           "video_size=%dx%d:"
+           "pix_fmt=%d:"
+           "time_base=%d/%d:"
+           "pixel_aspect=%d/%d:"
+           "colorspace=%d:"
+           "range=%d",
+           ctx->width, ctx->height, ctx->pixel_format, ctx->time_base.num,
+           ctx->time_base.den, ctx->sample_aspect_ratio.num,
+           ctx->sample_aspect_ratio.den, ctx->color_space, ctx->color_range);
+
+  result = avfilter_graph_create_filter(&ctx->buffersrc_ctx, buffer_filter,
+                                        "gif_input", buffer_arguments, NULL,
+                                        ctx->filter_graph);
+
+  if (result < 0) {
+    return PBD_ERROR;
+  }
+
+  result =
+      avfilter_graph_create_filter(&ctx->buffersink_ctx, buffersink_filter,
+                                   "gif_output", NULL, NULL, ctx->filter_graph);
+
+  if (result < 0) {
+    return PBD_ERROR;
+  }
+
+  inputs = avfilter_inout_alloc();
+  outputs = avfilter_inout_alloc();
+
+  if (inputs == NULL || outputs == NULL) {
+    avfilter_inout_free(&inputs);
+    avfilter_inout_free(&outputs);
+
+    return PBD_ERROR;
+  }
+
+  outputs->name = av_strdup("in");
+  outputs->filter_ctx = ctx->buffersrc_ctx;
+  outputs->pad_idx = 0;
+  outputs->next = NULL;
+
+  inputs->name = av_strdup("out");
+  inputs->filter_ctx = ctx->buffersink_ctx;
+  inputs->pad_idx = 0;
+  inputs->next = NULL;
+
+  if (outputs->name == NULL || inputs->name == NULL) {
+    avfilter_inout_free(&inputs);
+    avfilter_inout_free(&outputs);
+
+    return PBD_ERROR;
+  }
+
+  result = avfilter_graph_parse_ptr(ctx->filter_graph, filter_description,
+                                    &inputs, &outputs, NULL);
+
+  avfilter_inout_free(&inputs);
+  avfilter_inout_free(&outputs);
+
+  if (result < 0) {
+    return PBD_ERROR;
+  }
+
+  result = avfilter_graph_config(ctx->filter_graph, NULL);
+
+  if (result < 0) {
+    return PBD_ERROR;
+  }
+
+  return PBD_SUCCESS;
+}
+
+/*
+ * Creates the pixel-format conversion context required by the current
+ * encoder.
+ *
+ * The context is initialized only once because every frame in one
+ * encoding session is expected to preserve its dimensions and source
+ * pixel format.
+ */
+static int ffmpeg_create_sws_context(EncoderContext *ctx) {
+  enum AVPixelFormat source_pixel_format;
+  int source_full_range;
+  int result;
+
+  if (ctx == NULL || ctx->video_encoder == NULL) {
+    return PBD_ERROR;
+  }
+
+  if (ctx->sws != NULL) {
+    return PBD_SUCCESS;
+  }
+
+  source_pixel_format = ctx->pixel_format;
+  source_full_range = 0;
+
+  switch (source_pixel_format) {
+  case AV_PIX_FMT_YUVJ420P:
+    source_pixel_format = AV_PIX_FMT_YUV420P;
+    source_full_range = 1;
+    break;
+
+  case AV_PIX_FMT_YUVJ422P:
+    source_pixel_format = AV_PIX_FMT_YUV422P;
+    source_full_range = 1;
+    break;
+
+  case AV_PIX_FMT_YUVJ444P:
+    source_pixel_format = AV_PIX_FMT_YUV444P;
+    source_full_range = 1;
+    break;
+
+  default:
+    break;
+  }
+
+  ctx->sws = sws_getContext(
+      ctx->width, ctx->height, source_pixel_format, ctx->width, ctx->height,
+      ctx->video_encoder->pix_fmt, SWS_BILINEAR, NULL, NULL, NULL);
+
+  if (ctx->sws == NULL) {
+    return PBD_ERROR;
+  }
+
+  if (!source_full_range) {
+    return PBD_SUCCESS;
+  }
+
+  const int *coefficients = sws_getCoefficients(SWS_CS_DEFAULT);
+
+  result = sws_setColorspaceDetails(ctx->sws, coefficients, 1, coefficients, 0,
+                                    0, 1 << 16, 1 << 16);
+
+  if (result < 0) {
+    sws_freeContext(ctx->sws);
+    ctx->sws = NULL;
+
+    return PBD_ERROR;
+  }
+
+  return PBD_SUCCESS;
+}
+
+/*
  * Converts the decoded image into the pixel format required by the
  * selected video encoder.
  */
 static int ffmpeg_prepare_video_frame(EncoderContext *ctx) {
-  enum AVPixelFormat source_pixel_format;
-  int source_full_range;
   int result;
 
   if (ctx == NULL || ctx->decoded_frame == NULL || ctx->encoder_frame == NULL ||
@@ -637,54 +836,10 @@ static int ffmpeg_prepare_video_frame(EncoderContext *ctx) {
     return PBD_ERROR;
   }
 
-  /*
-   * Create the conversion context only once, after the first image
-   * has provided the source dimensions and pixel format.
-   */
-  if (ctx->sws == NULL) {
-    source_pixel_format = ctx->pixel_format;
-    source_full_range = 0;
+  result = ffmpeg_create_sws_context(ctx);
 
-    switch (source_pixel_format) {
-    case AV_PIX_FMT_YUVJ420P:
-      source_pixel_format = AV_PIX_FMT_YUV420P;
-      source_full_range = 1;
-      break;
-
-    case AV_PIX_FMT_YUVJ422P:
-      source_pixel_format = AV_PIX_FMT_YUV422P;
-      source_full_range = 1;
-      break;
-
-    case AV_PIX_FMT_YUVJ444P:
-      source_pixel_format = AV_PIX_FMT_YUV444P;
-      source_full_range = 1;
-      break;
-
-    default:
-      break;
-    }
-
-    ctx->sws = sws_getContext(
-        ctx->width, ctx->height, source_pixel_format, ctx->width, ctx->height,
-        ctx->video_encoder->pix_fmt, SWS_BILINEAR, NULL, NULL, NULL);
-
-    if (ctx->sws == NULL) {
-      return PBD_ERROR;
-    }
-
-    if (source_full_range) {
-      const int *coefficients;
-
-      coefficients = sws_getCoefficients(SWS_CS_DEFAULT);
-
-      result = sws_setColorspaceDetails(ctx->sws, coefficients, 1, coefficients,
-                                        0, 0, 1 << 16, 1 << 16);
-
-      if (result < 0) {
-        return PBD_ERROR;
-      }
-    }
+  if (result != PBD_SUCCESS) {
+    return result;
   }
 
   result = av_frame_make_writable(ctx->encoder_frame);
@@ -705,11 +860,57 @@ static int ffmpeg_prepare_video_frame(EncoderContext *ctx) {
 }
 
 /*
- * Selects the frame preparation path required by the current output
- * encoder.
+ * Prepares a decoded image for video encoding.
+ *
+ * GIF frames bypass this path because their pixel-format conversion
+ * is performed by the dedicated libavfilter graph.
  */
 static int ffmpeg_prepare_encoder_frame(EncoderContext *ctx) {
+  if (ctx == NULL) {
+    return PBD_ERROR;
+  }
+
   return ffmpeg_prepare_video_frame(ctx);
+}
+
+/*
+ * Replaces deprecated full-range YUVJ pixel formats with their
+ * standard YUV equivalents while preserving JPEG full range.
+ */
+static void ffmpeg_normalize_decoded_frame(AVFrame *frame) {
+  if (frame == NULL) {
+    return;
+  }
+
+  switch (frame->format) {
+  case AV_PIX_FMT_YUVJ420P:
+    frame->format = AV_PIX_FMT_YUV420P;
+    frame->color_range = AVCOL_RANGE_JPEG;
+    break;
+
+  case AV_PIX_FMT_YUVJ411P:
+    frame->format = AV_PIX_FMT_YUV411P;
+    frame->color_range = AVCOL_RANGE_JPEG;
+    break;
+
+  case AV_PIX_FMT_YUVJ422P:
+    frame->format = AV_PIX_FMT_YUV422P;
+    frame->color_range = AVCOL_RANGE_JPEG;
+    break;
+
+  case AV_PIX_FMT_YUVJ444P:
+    frame->format = AV_PIX_FMT_YUV444P;
+    frame->color_range = AVCOL_RANGE_JPEG;
+    break;
+
+  case AV_PIX_FMT_YUVJ440P:
+    frame->format = AV_PIX_FMT_YUV440P;
+    frame->color_range = AVCOL_RANGE_JPEG;
+    break;
+
+  default:
+    break;
+  }
 }
 
 /*
@@ -792,6 +993,8 @@ int ffmpeg_decode_image(EncoderContext *ctx, const void *data, size_t size) {
     return PBD_ERROR;
   }
 
+  ffmpeg_normalize_decoded_frame(ctx->decoded_frame);
+
   /*
   -------------------------------------------------------------
       First decoded image.
@@ -806,6 +1009,12 @@ int ffmpeg_decode_image(EncoderContext *ctx, const void *data, size_t size) {
     ctx->height = ctx->decoded_frame->height;
 
     ctx->pixel_format = ctx->decoded_frame->format;
+
+    ctx->sample_aspect_ratio = ctx->decoded_frame->sample_aspect_ratio;
+
+    ctx->color_space = ctx->decoded_frame->colorspace;
+
+    ctx->color_range = ctx->decoded_frame->color_range;
 
     result = ffmpeg_open_video_encoder(ctx);
 
@@ -824,46 +1033,26 @@ int ffmpeg_decode_image(EncoderContext *ctx, const void *data, size_t size) {
 */
 
 /*
- * Encodes one frame and writes the produced packets into the output
- * container.
+ * Sends one fully prepared frame to the video encoder and writes every
+ * packet produced by it.
+ *
+ * The caller is responsible for assigning the frame timestamp and
+ * updating the encoding timeline.
  */
-int ffmpeg_encode_frame(EncoderContext *ctx, uint32_t duration_ms) {
+int ffmpeg_encode_frame(EncoderContext *ctx) {
   int result;
 
-  if (ctx == NULL) {
+  if (ctx == NULL || ctx->video_encoder == NULL || ctx->encoder_frame == NULL ||
+      ctx->encode_packet == NULL || ctx->video_stream == NULL ||
+      ctx->format_ctx == NULL) {
     return PBD_ERROR;
   }
-
-  /*
-  -------------------------------------------------------------
-      Assign presentation timestamp.
-
-      The time base is expressed in milliseconds.
-  -------------------------------------------------------------
-  */
-
-  ctx->encoder_frame->pts = ctx->current_pts;
-
-  /*
-  -------------------------------------------------------------
-      Send the frame to the encoder.
-  -------------------------------------------------------------
-  */
 
   result = avcodec_send_frame(ctx->video_encoder, ctx->encoder_frame);
 
   if (result < 0) {
     return PBD_ERROR;
   }
-
-  /*
-  -------------------------------------------------------------
-      Read every packet produced by the encoder.
-
-      Some codecs may generate more than one packet for a single
-      input frame.
-  -------------------------------------------------------------
-  */
 
   while (1) {
     av_packet_unref(ctx->encode_packet);
@@ -882,29 +1071,10 @@ int ffmpeg_encode_frame(EncoderContext *ctx, uint32_t duration_ms) {
       return PBD_ERROR;
     }
 
-    /*
-    ---------------------------------------------------------
-        Associate the packet with the output stream.
-    ---------------------------------------------------------
-    */
-
     ctx->encode_packet->stream_index = ctx->video_stream->index;
-
-    /*
-    ---------------------------------------------------------
-        Convert timestamps from encoder time base to stream
-        time base.
-    ---------------------------------------------------------
-    */
 
     av_packet_rescale_ts(ctx->encode_packet, ctx->video_encoder->time_base,
                          ctx->video_stream->time_base);
-
-    /*
-    ---------------------------------------------------------
-        Write the encoded packet.
-    ---------------------------------------------------------
-    */
 
     result = av_interleaved_write_frame(ctx->format_ctx, ctx->encode_packet);
 
@@ -915,18 +1085,6 @@ int ffmpeg_encode_frame(EncoderContext *ctx, uint32_t duration_ms) {
     }
   }
 
-  /*
-  -------------------------------------------------------------
-      Advance the encoder timeline.
-  -------------------------------------------------------------
-  */
-
-  ctx->current_pts += duration_ms;
-
-  ctx->current_time_ms += duration_ms;
-
-  ++ctx->frame_count;
-
   return PBD_SUCCESS;
 }
 
@@ -935,6 +1093,54 @@ int ffmpeg_encode_frame(EncoderContext *ctx, uint32_t duration_ms) {
     Encoder shutdown
 =====================================================================
 */
+
+/*
+ * Flushes the GIF filter graph.
+ *
+ * After EOF is sent to the buffersrc, palettegen computes the global
+ * palette and paletteuse starts emitting PAL8 frames through the
+ * buffersink.
+ */
+static int ffmpeg_flush_gif_filter_graph(EncoderContext *ctx) {
+  int result;
+
+  if (ctx == NULL) {
+    return PBD_ERROR;
+  }
+
+  result = av_buffersrc_add_frame_flags(ctx->buffersrc_ctx, NULL,
+                                        AV_BUFFERSRC_FLAG_KEEP_REF);
+
+  if (result < 0) {
+    return PBD_ERROR;
+  }
+
+  while (1) {
+    av_frame_unref(ctx->encoder_frame);
+
+    result = av_buffersink_get_frame(ctx->buffersink_ctx, ctx->encoder_frame);
+
+    if (result == AVERROR(EAGAIN)) {
+      break;
+    }
+
+    if (result == AVERROR_EOF) {
+      break;
+    }
+
+    if (result < 0) {
+      return PBD_ERROR;
+    }
+
+    result = ffmpeg_encode_frame(ctx);
+
+    if (result != PBD_SUCCESS) {
+      return result;
+    }
+  }
+
+  return PBD_SUCCESS;
+}
 
 /*
  * Flushes every delayed frame from the encoder.
@@ -1019,7 +1225,26 @@ int ffmpeg_encoder_close(EncoderContext *ctx) {
 
   /*
   -------------------------------------------------------------
-      Flush delayed frames.
+      Flush pending GIF frames.
+
+      GIF encoding requires draining the filter graph before the
+      video encoder itself can be flushed.
+  -------------------------------------------------------------
+  */
+
+  if (strcmp(ctx->codec_name, "gif") == 0) {
+    result = ffmpeg_flush_gif_filter_graph(ctx);
+
+    if (result != PBD_SUCCESS) {
+      ffmpeg_release(ctx);
+
+      return result;
+    }
+  }
+
+  /*
+  -------------------------------------------------------------
+      Flush delayed encoder frames.
   -------------------------------------------------------------
   */
 
@@ -1074,6 +1299,19 @@ void ffmpeg_release(EncoderContext *ctx) {
   if (ctx == NULL) {
     return;
   }
+
+  /*
+  -------------------------------------------------------------
+      GIF filter graph
+  -------------------------------------------------------------
+  */
+
+  if (ctx->filter_graph != NULL) {
+    avfilter_graph_free(&ctx->filter_graph);
+  }
+
+  ctx->buffersrc_ctx = NULL;
+  ctx->buffersink_ctx = NULL;
 
   /*
   -------------------------------------------------------------

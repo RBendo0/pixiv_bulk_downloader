@@ -34,15 +34,27 @@
 #define LAST_TEST 12
 
 #define METADATA_NAME "metadata.csv"
-#define OUTPUT_NAME "output.webm"
 #define RESULTS_NAME "benchmark.csv"
-
-#define CONTAINER_NAME "webm"
-#define CODEC_NAME "libvpx-vp9"
 
 #define PATH_BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 1024
 #define FRAME_NAME_SIZE 512
+
+typedef struct BenchmarkProfile {
+  const char *name;
+  const char *output_name;
+  const char *container_name;
+  const char *codec_name;
+} BenchmarkProfile;
+
+static const BenchmarkProfile BENCHMARK_PROFILES[] = {
+    {"webm", "output.webm", "webm", "libvpx-vp9"},
+    {"mp4", "output.mp4", "mp4", "libx264"},
+    {"gif-default", "output.gif", "gif", "gif"},
+};
+
+#define BENCHMARK_PROFILE_COUNT                                                \
+  (sizeof(BENCHMARK_PROFILES) / sizeof(BENCHMARK_PROFILES[0]))
 
 /*
 ---------------------------------------------------------------------
@@ -232,8 +244,8 @@ static int parse_frame_record(char *line, char *filename,
 ---------------------------------------------------------------------
 */
 
-static int encode_test(int test_number, size_t *encoded_frames,
-                       unsigned long long *elapsed_ms) {
+static int encode_test(int test_number, const BenchmarkProfile *profile,
+                       size_t *encoded_frames, unsigned long long *elapsed_ms) {
   char metadata_path[PATH_BUFFER_SIZE];
   char output_path[PATH_BUFFER_SIZE];
   char frame_path[PATH_BUFFER_SIZE];
@@ -252,7 +264,7 @@ static int encode_test(int test_number, size_t *encoded_frames,
   int encoder_started;
   int result;
 
-  if (encoded_frames == NULL || elapsed_ms == NULL) {
+  if (profile == NULL || encoded_frames == NULL || elapsed_ms == NULL) {
     return 0;
   }
 
@@ -262,7 +274,7 @@ static int encode_test(int test_number, size_t *encoded_frames,
   if (!make_path(metadata_path, sizeof(metadata_path), "%s\\%d\\%s",
                  test_number, METADATA_NAME) ||
       !make_path(output_path, sizeof(output_path), "%s\\%d\\%s", test_number,
-                 OUTPUT_NAME)) {
+                 profile->output_name)) {
     printf("[ERRORE] Test %d: percorso troppo lungo.\n", test_number);
     return 0;
   }
@@ -275,9 +287,11 @@ static int encode_test(int test_number, size_t *encoded_frames,
     return 0;
   }
 
-  printf("\n[Test %d]\n", test_number);
-  printf("Metadata: %s\n", metadata_path);
-  printf("Output:   %s\n", output_path);
+  printf("\n[Test %d - %s]\n", test_number, profile->name);
+  printf("Metadata:  %s\n", metadata_path);
+  printf("Output:    %s\n", output_path);
+  printf("Container: %s\n", profile->container_name);
+  printf("Codec:     %s\n", profile->codec_name);
 
   start_time = GetTickCount64();
   encoder_started = 0;
@@ -293,10 +307,10 @@ static int encode_test(int test_number, size_t *encoded_frames,
     goto cleanup;
   }
 
-  if (encoder_start(ctx, output_path, CONTAINER_NAME, CODEC_NAME, NULL, 0) !=
-      0) {
-    printf("[ERRORE] Test %d: inizializzazione encoder fallita.\n",
-           test_number);
+  if (encoder_start(ctx, output_path, profile->container_name,
+                    profile->codec_name) != 0) {
+    printf("[ERRORE] Test %d - %s: inizializzazione encoder fallita.\n",
+           test_number, profile->name);
     goto cleanup;
   }
 
@@ -427,8 +441,8 @@ static FILE *open_results_file(void) {
     return NULL;
   }
 
-  fprintf(results,
-          "test,frames,elapsed_ms,elapsed_seconds,frames_per_second,status\n");
+  fprintf(results, "test,profile,container,codec,frames,elapsed_ms,"
+                   "elapsed_seconds,frames_per_second,status\n");
 
   printf("Risultati: %s\n", results_path);
 
@@ -450,8 +464,17 @@ int main(void) {
 
   printf("PBD native encoder benchmark\n");
   printf("Dataset: %s\n", TEST_ROOT);
-  printf("Codec:   %s\n", CODEC_NAME);
-  printf("Formato: %s\n\n", CONTAINER_NAME);
+  printf("Profili: %zu\n\n", (size_t)BENCHMARK_PROFILE_COUNT);
+
+  for (size_t profile_index = 0; profile_index < BENCHMARK_PROFILE_COUNT;
+       ++profile_index) {
+    const BenchmarkProfile *profile = &BENCHMARK_PROFILES[profile_index];
+
+    printf("  %-12s container=%-5s codec=%s\n", profile->name,
+           profile->container_name, profile->codec_name);
+  }
+
+  printf("\n");
 
   results = open_results_file();
 
@@ -463,36 +486,44 @@ int main(void) {
   failed_tests = 0;
 
   for (test_number = FIRST_TEST; test_number <= LAST_TEST; ++test_number) {
-    size_t frame_count;
-    unsigned long long elapsed_ms;
-    int success;
-    double elapsed_seconds;
-    double frames_per_second;
+    for (size_t profile_index = 0; profile_index < BENCHMARK_PROFILE_COUNT;
+         ++profile_index) {
+      const BenchmarkProfile *profile = &BENCHMARK_PROFILES[profile_index];
 
-    success = encode_test(test_number, &frame_count, &elapsed_ms);
+      size_t frame_count;
+      unsigned long long elapsed_ms;
+      int success;
+      double elapsed_seconds;
+      double frames_per_second;
 
-    elapsed_seconds = (double)elapsed_ms / 1000.0;
-    frames_per_second =
-        elapsed_ms > 0 ? ((double)frame_count * 1000.0) / (double)elapsed_ms
-                       : 0.0;
+      success = encode_test(test_number, profile, &frame_count, &elapsed_ms);
 
-    fprintf(results, "%d,%zu,%llu,%.6f,%.3f,%s\n", test_number, frame_count,
-            elapsed_ms, elapsed_seconds, frames_per_second,
-            success ? "ok" : "error");
-    fflush(results);
+      elapsed_seconds = (double)elapsed_ms / 1000.0;
 
-    if (success) {
-      ++successful_tests;
-    } else {
-      ++failed_tests;
+      frames_per_second =
+          elapsed_ms > 0 ? ((double)frame_count * 1000.0) / (double)elapsed_ms
+                         : 0.0;
+
+      fprintf(results, "%d,%s,%s,%s,%zu,%llu,%.6f,%.3f,%s\n", test_number,
+              profile->name, profile->container_name, profile->codec_name,
+              frame_count, elapsed_ms, elapsed_seconds, frames_per_second,
+              success ? "ok" : "error");
+
+      fflush(results);
+
+      if (success) {
+        ++successful_tests;
+      } else {
+        ++failed_tests;
+      }
     }
   }
 
   fclose(results);
 
   printf("\n========================================\n");
-  printf("Test completati: %d\n", successful_tests);
-  printf("Test falliti:    %d\n", failed_tests);
+  printf("Codifiche completate: %d\n", successful_tests);
+  printf("Codifiche fallite:    %d\n", failed_tests);
   printf("========================================\n");
 
   return failed_tests == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
