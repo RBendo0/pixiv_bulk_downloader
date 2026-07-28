@@ -26,3 +26,29 @@ Thumbs.db
 
 # Python packaging
 PKG-INFO
+
+# Tool caches
+.ruff_cache/
+
+# Build outputs
+build/
+dist/
+
+# Local shortcuts
+cartelle/
+*.lnk
+
+# Generated package metadata
+/PKG-INFO
+
+# Generated media and benchmark reports
+/output.*
+lab/**/*.gif
+lab/**/*.webm
+lab/**/*.mp4
+lab/**/validation_report*.csv
+lab/**/gif_frame_durations*.csv
+
+# Local project inventories
+/struttura.txt
+/repository.txt

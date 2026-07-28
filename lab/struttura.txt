@@ -1,0 +1,440 @@
+Elenco del percorso delle cartelle per il volume OPERATIVE SYSTEM M2.1 930.1
+Numero di serie del volume: 000000B0-FA62:D14E
+C:.
+|   .clangd
+|   .gitignore
+|   build.bat
+|   DECISIONLOG.md
+|   LICENSE
+|   pbd.spec
+|   pixiv_bulk_downloader.code-workspace
+|   PKG-INFO
+|   pyproject.toml
+|   README.md
+|   ROADMAP.md
+|   struttura.txt
+|   TODO.md
+|   
++---.ruff_cache
+|   |   .gitignore
+|   |   CACHEDIR.TAG
+|   |   
+|   \---0.15.15
+|           14921810906093767327
+|           18407457160995265594
+|           4237743585615305006
+|           
++---.vscode
+|       settings.json
+|       
++---build
+|   +---encoder
+|   |   |   ALL_BUILD.vcxproj
+|   |   |   ALL_BUILD.vcxproj.filters
+|   |   |   CMakeCache.txt
+|   |   |   cmake_install.cmake
+|   |   |   pbd_encoder.sln
+|   |   |   pbd_encoder.vcxproj
+|   |   |   pbd_encoder.vcxproj.filters
+|   |   |   pbd_encoder_test.vcxproj
+|   |   |   pbd_encoder_test.vcxproj.filters
+|   |   |   ZERO_CHECK.vcxproj
+|   |   |   ZERO_CHECK.vcxproj.filters
+|   |   |   
+|   |   +---ALL_BUILD.dir
+|   |   |   +---Debug
+|   |   |   +---MinSizeRel
+|   |   |   +---Release
+|   |   |   \---RelWithDebInfo
+|   |   +---bin
+|   |   |   +---Debug
+|   |   |   |       pbd_encoder_test.exe
+|   |   |   |       pbd_encoder_test.pdb
+|   |   |   |       
+|   |   |   \---Release
+|   |   |           pbd_encoder_test.exe
+|   |   |           
+|   |   +---CMakeFiles
+|   |   |   |   cmake.check_cache
+|   |   |   |   CMakeConfigureLog.yaml
+|   |   |   |   generate.stamp
+|   |   |   |   generate.stamp.depend
+|   |   |   |   generate.stamp.list
+|   |   |   |   InstallScripts.json
+|   |   |   |   TargetDirectories.txt
+|   |   |   |   
+|   |   |   +---4.4.0
+|   |   |   |   |   CMakeCCompiler.cmake
+|   |   |   |   |   CMakeDetermineCompilerABI_C.bin
+|   |   |   |   |   CMakeRCCompiler.cmake
+|   |   |   |   |   CMakeSystem.cmake
+|   |   |   |   |   VCTargetsPath.txt
+|   |   |   |   |   VCTargetsPath.vcxproj
+|   |   |   |   |   
+|   |   |   |   +---CompilerIdC
+|   |   |   |   |   |   CMakeCCompilerId.c
+|   |   |   |   |   |   CompilerIdC.exe
+|   |   |   |   |   |   CompilerIdC.vcxproj
+|   |   |   |   |   |   
+|   |   |   |   |   +---Debug
+|   |   |   |   |   |   |   CMakeCCompilerId.obj
+|   |   |   |   |   |   |   CompilerIdC.exe.recipe
+|   |   |   |   |   |   |   
+|   |   |   |   |   |   \---CompilerIdC.tlog
+|   |   |   |   |   |           CL.command.1.tlog
+|   |   |   |   |   |           Cl.items.tlog
+|   |   |   |   |   |           CL.read.1.tlog
+|   |   |   |   |   |           CL.write.1.tlog
+|   |   |   |   |   |           CompilerIdC.lastbuildstate
+|   |   |   |   |   |           link.command.1.tlog
+|   |   |   |   |   |           link.read.1.tlog
+|   |   |   |   |   |           link.secondary.1.tlog
+|   |   |   |   |   |           link.write.1.tlog
+|   |   |   |   |   |           
+|   |   |   |   |   \---tmp
+|   |   |   |   +---VCTargetsPath
+|   |   |   |   |   \---x64
+|   |   |   |   |       \---Debug
+|   |   |   |   |           |   VCTargetsPath.recipe
+|   |   |   |   |           |   
+|   |   |   |   |           \---VCTargetsPath.tlog
+|   |   |   |   |                   VCTargetsPath.lastbuildstate
+|   |   |   |   |                   
+|   |   |   |   \---x64
+|   |   |   |       \---Debug
+|   |   |   +---77023b9a57233b6951989e0ee7986e35
+|   |   |   |       generate.stamp.rule
+|   |   |   |       
+|   |   |   \---pkgRedirects
+|   |   +---lib
+|   |   |   +---Debug
+|   |   |   |       pbd_encoder.lib
+|   |   |   |       pbd_encoder.pdb
+|   |   |   |       
+|   |   |   \---Release
+|   |   |           pbd_encoder.lib
+|   |   |           
+|   |   +---pbd_encoder.dir
+|   |   |   +---Debug
+|   |   |   |   |   encoder.obj
+|   |   |   |   |   ffmpeg_internal.obj
+|   |   |   |   |   pbd_encoder.lib.recipe
+|   |   |   |   |   
+|   |   |   |   \---pbd_encoder.tlog
+|   |   |   |           CL.command.1.tlog
+|   |   |   |           Cl.items.tlog
+|   |   |   |           CL.read.1.tlog
+|   |   |   |           CL.write.1.tlog
+|   |   |   |           CustomBuild.command.1.tlog
+|   |   |   |           CustomBuild.read.1.tlog
+|   |   |   |           CustomBuild.write.1.tlog
+|   |   |   |           Lib-link.read.1.tlog
+|   |   |   |           Lib-link.write.1.tlog
+|   |   |   |           Lib.command.1.tlog
+|   |   |   |           pbd_encoder.lastbuildstate
+|   |   |   |           
+|   |   |   +---MinSizeRel
+|   |   |   +---Release
+|   |   |   |   |   encoder.obj
+|   |   |   |   |   ffmpeg_internal.obj
+|   |   |   |   |   pbd_encoder.lib.recipe
+|   |   |   |   |   
+|   |   |   |   \---pbd_encoder.tlog
+|   |   |   |           CL.command.1.tlog
+|   |   |   |           Cl.items.tlog
+|   |   |   |           CL.read.1.tlog
+|   |   |   |           CL.write.1.tlog
+|   |   |   |           CustomBuild.command.1.tlog
+|   |   |   |           CustomBuild.read.1.tlog
+|   |   |   |           CustomBuild.write.1.tlog
+|   |   |   |           Lib-link.read.1.tlog
+|   |   |   |           Lib-link.write.1.tlog
+|   |   |   |           Lib.command.1.tlog
+|   |   |   |           pbd_encoder.lastbuildstate
+|   |   |   |           
+|   |   |   \---RelWithDebInfo
+|   |   +---pbd_encoder_test.dir
+|   |   |   +---Debug
+|   |   |   |   |   main.obj
+|   |   |   |   |   pbd_encoder_test.exe.recipe
+|   |   |   |   |   pbd_encoder_test.ilk
+|   |   |   |   |   vc143.pdb
+|   |   |   |   |   
+|   |   |   |   \---pbd_encoder_test.tlog
+|   |   |   |           CL.command.1.tlog
+|   |   |   |           Cl.items.tlog
+|   |   |   |           CL.read.1.tlog
+|   |   |   |           CL.write.1.tlog
+|   |   |   |           CustomBuild.command.1.tlog
+|   |   |   |           CustomBuild.read.1.tlog
+|   |   |   |           CustomBuild.write.1.tlog
+|   |   |   |           link.command.1.tlog
+|   |   |   |           link.read.1.tlog
+|   |   |   |           link.secondary.1.tlog
+|   |   |   |           link.write.1.tlog
+|   |   |   |           pbd_encoder_test.lastbuildstate
+|   |   |   |           
+|   |   |   +---MinSizeRel
+|   |   |   +---Release
+|   |   |   |   |   main.obj
+|   |   |   |   |   pbd_encoder_test.exe.recipe
+|   |   |   |   |   
+|   |   |   |   \---pbd_encoder_test.tlog
+|   |   |   |           CL.command.1.tlog
+|   |   |   |           Cl.items.tlog
+|   |   |   |           CL.read.1.tlog
+|   |   |   |           CL.write.1.tlog
+|   |   |   |           CustomBuild.command.1.tlog
+|   |   |   |           CustomBuild.read.1.tlog
+|   |   |   |           CustomBuild.write.1.tlog
+|   |   |   |           link.command.1.tlog
+|   |   |   |           link.read.1.tlog
+|   |   |   |           link.secondary.1.tlog
+|   |   |   |           link.write.1.tlog
+|   |   |   |           pbd_encoder_test.lastbuildstate
+|   |   |   |           
+|   |   |   \---RelWithDebInfo
+|   |   +---x64
+|   |   |   +---Debug
+|   |   |   |   +---ALL_BUILD
+|   |   |   |   |   |   ALL_BUILD.recipe
+|   |   |   |   |   |   
+|   |   |   |   |   \---ALL_BUILD.tlog
+|   |   |   |   |           ALL_BUILD.lastbuildstate
+|   |   |   |   |           CustomBuild.command.1.tlog
+|   |   |   |   |           CustomBuild.read.1.tlog
+|   |   |   |   |           CustomBuild.write.1.tlog
+|   |   |   |   |           
+|   |   |   |   \---ZERO_CHECK
+|   |   |   |       |   ZERO_CHECK.recipe
+|   |   |   |       |   
+|   |   |   |       \---ZERO_CHECK.tlog
+|   |   |   |               CustomBuild.command.1.tlog
+|   |   |   |               CustomBuild.read.1.tlog
+|   |   |   |               CustomBuild.write.1.tlog
+|   |   |   |               ZERO_CHECK.lastbuildstate
+|   |   |   |               
+|   |   |   \---Release
+|   |   |       +---ALL_BUILD
+|   |   |       |   |   ALL_BUILD.recipe
+|   |   |       |   |   
+|   |   |       |   \---ALL_BUILD.tlog
+|   |   |       |           ALL_BUILD.lastbuildstate
+|   |   |       |           CustomBuild.command.1.tlog
+|   |   |       |           CustomBuild.read.1.tlog
+|   |   |       |           CustomBuild.write.1.tlog
+|   |   |       |           
+|   |   |       \---ZERO_CHECK
+|   |   |           |   ZERO_CHECK.recipe
+|   |   |           |   
+|   |   |           \---ZERO_CHECK.tlog
+|   |   |                   CustomBuild.command.1.tlog
+|   |   |                   CustomBuild.read.1.tlog
+|   |   |                   CustomBuild.write.1.tlog
+|   |   |                   ZERO_CHECK.lastbuildstate
+|   |   |                   
+|   |   \---ZERO_CHECK.dir
+|   |       +---Debug
+|   |       +---MinSizeRel
+|   |       +---Release
+|   |       \---RelWithDebInfo
+|   \---pbd
+|       |   Analysis-00.toc
+|       |   base_library.zip
+|       |   EXE-00.toc
+|       |   pbd.pkg
+|       |   PKG-00.toc
+|       |   PYZ-00.pyz
+|       |   PYZ-00.toc
+|       |   warn-pbd.txt
+|       |   xref-pbd.html
+|       |   
+|       \---localpycs
+|               pyimod01_archive.pyc
+|               pyimod02_importers.pyc
+|               pyimod03_ctypes.pyc
+|               pyimod04_pywin32.pyc
+|               struct.pyc
+|               
++---cartelle
+|       pbd - collegamento.lnk
+|       site-packages.lnk
+|       
++---csrc
+|   \---encoder
+|       |   CMakeLists.txt
+|       |   encoder.c
+|       |   encoder.h
+|       |   ffmpeg_internal.c
+|       |   ffmpeg_internal.h
+|       |   
+|       \---test
+|               main.c
+|               
++---doc
+|   |   AppPixivAPI Reference.txt
+|   |   BUCKETING SYSTEM.md
+|   |   Parametri Bucketing System.txt
+|   |   PBD errori ffmpeg.pdf
+|   |   pixiv_stress_test.log
+|   |   pixiv_stress_test_response.json
+|   |   RAPPORTO_SVILUPPO_PBD.md
+|   |   ROADMAPEXTRALARGE.md
+|   |   UCERRS.md
+|   |   UGOIRA CONVERSION.md
+|   |   UI_CONVENTIONS.md
+|   |   
+|   +---Dump Pixiv
+|   |       illust_detail.json
+|   |       illust_dump.json
+|   |       manga_detail.json
+|   |       manga_dump.json
+|   |       ugoira_detail.json
+|   |       ugoira_dump.json
+|   |       ugoira_metadata.json
+|   |       
+|   +---img
+|   |       hypar.png
+|   |       hype.png
+|   |       Immagine 2026-06-05 200013.png
+|   |       Immagine 2026-06-06 112336.png
+|   |       Immagine 2026-06-06 120022.png
+|   |       Immagine 2026-06-06 121824.png
+|   |       Immagine 2026-06-06 121851.png
+|   |       Immagine 2026-06-06 121916.png
+|   |       Immagine 2026-06-06 121932.png
+|   |       Immagine 2026-06-06 122859.png
+|   |       Immagine 2026-06-06 124219.png
+|   |       
+|   \---Total ID
+|           bookmarks_public_ids.csv
+|           bookmarks_public_ids.txt
+|           bookmarks_public_state.json
+|           
++---lab
+|   |   extract_ugoira_frames.py
+|   |   test.py
+|   |   tester 1 - 30s delay.py
+|   |   tester 2 - thread error print.py
+|   |   testinput.py
+|   |   test_toggle_menu.py
+|   |   test_ui_render.py
+|   |   ttt.py
+|   |   ugoira_benchmark.py
+|   |   ugoira_benchmark_extracted.py
+|   |   validate_outputs.py
+|   |   
+|   \---bucket_test
+|       |   bookmarks_public_ids.txt
+|       |   main.py
+|       |   
+|       \---img
+|               density_distribution.png
+|               density_distribution_log.png
+|               id_distribution.png
+|               Immagine 2026-06-05 210849.png
+|               Immagine 2026-06-05 211955.png
+|               
++---originali
+|   |   LICENSE
+|   |   pixiv_bulk_downloader-3.0.0.tar.gz
+|   |   PKG-INFO
+|   |   pyproject.toml
+|   |   README.md
+|   |   
+|   \---pixiv_bulk_downloader
+|           base.py
+|           bookmarks.py
+|           followings.py
+|           main.py
+|           pixiv_types.py
+|           py.typed
+|           __init__.py
+|           
+\---src
+    \---pixiv_bulk_downloader
+        |   animation.py
+        |   base.py
+        |   bookmarks.py
+        |   config.py
+        |   const.py
+        |   errors.py
+        |   iofile.py
+        |   main.py
+        |   metadata.py
+        |   pbd_path.py
+        |   pbd_types.py
+        |   pixiv_call_api.py
+        |   py.typed
+        |   timing.py
+        |   tps.py
+        |   ui.py
+        |   __init__.py
+        |   __main__.py
+        |   
+        +---my_gppt
+        |   |   auth.py
+        |   |   consts.py
+        |   |   gppt.py
+        |   |   main.py
+        |   |   model_types.py
+        |   |   py.typed
+        |   |   utils.py
+        |   |   __init__.py
+        |   |   
+        |   \---__pycache__
+        |           auth.cpython-313.pyc
+        |           consts.cpython-313.pyc
+        |           gppt.cpython-313.pyc
+        |           main.cpython-313.pyc
+        |           model_types.cpython-313.pyc
+        |           utils.cpython-313.pyc
+        |           __init__.cpython-313.pyc
+        |           
+        +---my_pixivpy3
+        |   |   aapi.py
+        |   |   api.py
+        |   |   bapi.py
+        |   |   py.typed
+        |   |   utils.py
+        |   |   __init__.py
+        |   |   
+        |   \---__pycache__
+        |           aapi.cpython-313.pyc
+        |           api.cpython-313.pyc
+        |           bapi.cpython-313.pyc
+        |           utils.cpython-313.pyc
+        |           __init__.cpython-313.pyc
+        |           
+        \---__pycache__
+                base.cpython-313.pyc
+                bookmarks.cpython-313.pyc
+                config.cpython-313.pyc
+                const.cpython-313.pyc
+                errors.cpython-313.pyc
+                extract_ugoira_frames.cpython-313.pyc
+                followings.cpython-313.pyc
+                iofile.cpython-313.pyc
+                main.cpython-313.pyc
+                metadata.cpython-313.pyc
+                pbd_path.cpython-313.pyc
+                pbd_types.cpython-313.pyc
+                pixiv_call_api.cpython-313.pyc
+                pixiv_errors.cpython-313.pyc
+                pixiv_path.cpython-313.pyc
+                pixiv_types.cpython-313.pyc
+                test.cpython-313.pyc
+                testinput.cpython-313.pyc
+                testrend.cpython-313.pyc
+                test_toggle_menu.cpython-313.pyc
+                test_ui_render.cpython-313.pyc
+                timing.cpython-313.pyc
+                tps.cpython-313.pyc
+                ugoira_benchmark.cpython-313.pyc
+                ugoira_benchmark_extracted.cpython-313.pyc
+                ui.cpython-313.pyc
+                utils.cpython-313.pyc
+                validate_outputs.cpython-313.pyc
+                __init__.cpython-313.pyc
+                __main__.cpython-313.pyc
+                
