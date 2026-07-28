@@ -1,8 +1,8 @@
 # Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+
+# Python bytecode
+*.py[cod]
 
 # Virtual environments
 .venv/
@@ -38,17 +38,31 @@ dist/
 cartelle/
 *.lnk
 
-# Generated package metadata
-/PKG-INFO
-
 # Generated media and benchmark reports
 /output.*
-lab/**/*.gif
-lab/**/*.webm
-lab/**/*.mp4
-lab/**/validation_report*.csv
-lab/**/gif_frame_durations*.csv
 
 # Local project inventories
 /struttura.txt
 /repository.txt
+
+# Python type checker
+.mypy_cache/
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Packaging
+*.egg-info/
+
+# Visual Studio
+.vs/
+
+# Personal workspace
+lab/
+notes/
+
+.coverage.*
