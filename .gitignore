@@ -66,3 +66,5 @@ lab/
 notes/
 
 .coverage.*
+
+*.code-workspace
