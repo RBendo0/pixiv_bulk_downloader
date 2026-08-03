@@ -45,6 +45,16 @@ DEFAULT_CODEC_SETTINGS: Final[CodecSettings] = CodecSettings(
     mp4="h264",
 )
 
+# TRADUZIONE DEI SIMBOLI DEI CODEC
+# NEL NOME DELL'ENCODER FFMPEG
+FFMPEG_ENCODERS: Final[dict[str, str]] = {
+    "vp8":  "libvpx",
+    "vp9":  "libvpx-vp9",
+    "av1":  "libaom-av1",
+    "h264": "libx264",
+    "h265": "libx265",
+}
+
 # SEMANTICA DEI FILES LISTA PREFERITI
 NOT_FOUND_CSV_PREFIX: Final[str] = "not_found_"
 DISCARDED_CSV_PREFIX: Final[str] = "discarded_"

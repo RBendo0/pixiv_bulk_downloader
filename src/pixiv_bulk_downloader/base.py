@@ -106,16 +106,19 @@ class PixivBaseDownloader:
         if image_data.is_ugoira:
 
             ugoira_data = image_data.get("ugoira")
+            ugoira_metadata = ugoira_data["ugoira_metadata"]
 
-            zip_url = (
-                ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
-            )
+            zip_url = ugoira_metadata["zip_urls"]["medium"]
+
+            frames = ugoira_metadata["frames"]
 
             links = [zip_url]
 
-        else: 
-        
-            links = image_data.get_links()            
+        else:
+
+            frames = None
+
+            links = image_data.get_links()
 
         try:
 
@@ -200,6 +203,7 @@ class PixivBaseDownloader:
                 link,
                 work_dir,
                 fname,
+                frames,
             )
 
             media_futures.append(future)
@@ -233,6 +237,7 @@ class PixivBaseDownloader:
         link: str,
         work_dir: Path,
         fname: str,
+        frames: list[dict] | None,
     ) -> bool:
 
         while True:

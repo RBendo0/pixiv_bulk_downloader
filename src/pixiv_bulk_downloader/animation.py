@@ -1,4 +1,7 @@
+import zipfile
+from collections.abc import Sequence
 from dataclasses import asdict, replace
+from pathlib import Path
 
 from .config import config
 from .const import (
@@ -7,7 +10,9 @@ from .const import (
     CONFIG_KEY_PREF_MEDIA,
     DEFAULT_CODEC_SETTINGS,
     DEFAULT_PREFERRED_MEDIA_FORMATS,
+    FFMPEG_ENCODERS,
 )
+from .encoder import Encoder, FrameSpec, MediaFormat
 from .errors import (
     InvalidDataFormat,
     JsonError,
@@ -21,12 +26,6 @@ from .pbd_types import (
     ToggleOption,
 )
 from .ui import ui
-
-WEBM_ENCODERS = {
-    "vp8": "libvpx",
-    "vp9": "libvpx-vp9",
-    "av1": "libaom-av1",
-}
 
 
 class MultiMediaManager:
@@ -232,20 +231,201 @@ class MultiMediaManager:
         cls._show_current_media_settings()
 
     @classmethod
-    def load_images(cls):
-        pass
+    def build_animation(
+        cls,
+        progress: str,
+        zip_path: Path,
+        frames: Sequence[FrameSpec],
+    ) -> None:
 
-    @classmethod
-    def build_frames(cls):
-        pass
+        formats: list[
+            tuple[
+                MediaFormat,
+                bool,
+                str | None,
+            ]
+        ] = [
+            (
+                "gif",
+                cls._preferred_media_formats.gif,
+                None,
+            ),
+            (
+                "webm",
+                cls._preferred_media_formats.webm,
+                cls._codec.webm,
+            ),
+            (
+                "mp4",
+                cls._preferred_media_formats.mp4,
+                cls._codec.mp4,
+            ),
+        ]
 
-    @classmethod
-    def to_gif(cls):
-        pass
+        encoder = Encoder()
 
-    @classmethod
-    def to_webm(cls):
-        pass
+        frame_total = len(frames)
+        frame_width = len(str(frame_total))
+
+        completed_statuses: list[str] = []
+
+        def write_progress(
+            current_status: str = "",
+        ) -> None:
+
+            status_parts = [
+                *completed_statuses,
+            ]
+
+            if current_status:
+                status_parts.append(current_status)
+
+            status_suffix = "".join(
+                (
+                    f"{ui.COLOR_DEFAULT}"
+                    f" | "
+                    f"{status}"
+                )
+                for status in status_parts
+            )
+
+            ui.Renderer.in_thread_write(
+                progress + status_suffix
+            )
+
+        for (
+            format_name,
+            enabled,
+            codec_symbol,
+        ) in formats:
+
+            if not enabled:
+                continue
+
+            format_label = format_name.upper()
+
+            output_path = (
+                zip_path.parent
+                / f"a0.{format_name}"
+            )
+
+            try:
+
+                codec = (
+                    None
+                    if codec_symbol is None
+                    else FFMPEG_ENCODERS[codec_symbol]
+                )
+
+                encoder.start(
+                    format_name=format_name,
+                    output_path=output_path,
+                    frames=frames,
+                    codec=codec,
+                )
+
+                write_progress(
+                    f"{ui.COLOR_INFO}"
+                    f"Building {format_label} "
+                    f"[{0:0{frame_width}d}/"
+                    f"{frame_total:0{frame_width}d}] "
+                    f"0%"
+                )
+
+                with zipfile.ZipFile(
+                    zip_path,
+                    "r",
+                ) as archive:
+
+                    archive_names = set(
+                        archive.namelist()
+                    )
+
+                    for frame_index, frame in enumerate(
+                        frames,
+                        start=1,
+                    ):
+
+                        try:
+                            frame_name = str(
+                                frame["file"]
+                            )
+
+                        except (
+                            KeyError,
+                            TypeError,
+                        ) as error:
+
+                            raise ValueError(
+                                "Nome del frame non valido "
+                                f"all'indice {frame_index - 1}"
+                            ) from error
+
+                        if frame_name not in archive_names:
+
+                            raise FileNotFoundError(
+                                f"Frame {frame_name!r} "
+                                f"non presente in {zip_path.name}"
+                            )
+
+                        image_data = archive.read(
+                            frame_name
+                        )
+
+                        encoder.add(
+                            image_data
+                        )
+
+                        percentage = (
+                            frame_index
+                            * 100
+                            // frame_total
+                        )
+
+                        write_progress(
+                            f"{ui.COLOR_INFO}"
+                            f"Building {format_label} "
+                            f"[{frame_index:0{frame_width}d}/"
+                            f"{frame_total:0{frame_width}d}] "
+                            f"{percentage}%"
+                        )
+
+                encoder.stop()
+
+            except Exception as error:
+
+                # Se l'errore è avvenuto fuori da Encoder.add(),
+                # per esempio durante la lettura dello ZIP, assicura
+                # comunque la chiusura del processo FFmpeg.
+                try:
+                    encoder.stop()
+
+                except Exception:
+                    pass
+
+                error = PBDError.cast(
+                    error
+                )
+
+                write_progress(
+                    f"{ui.COLOR_ERROR}"
+                    f"{format_label} discarded: "
+                    f"{error.report()}"
+                )
+
+                completed_statuses.append(
+                    f"{ui.COLOR_ERROR}"
+                    f"{format_label} discarded"
+                )
+
+                continue
+
+            completed_statuses.append(
+                f"{ui.COLOR_SUCCESS}"
+                f"{format_label} completed"
+            )
+
+            write_progress()
 
 
 # Alias della classe di conversione delle animazioni in GIF e WEBM

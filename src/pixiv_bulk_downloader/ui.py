@@ -67,7 +67,6 @@ class UI:
             case _:
                 return key
 
-
     @classmethod
     def refresh(cls) -> None:
 
