@@ -15,8 +15,9 @@ from .const import (
 )
 from .encoder import Encoder, FrameSpec, MediaFormat
 from .errors import (
-    InvalidDataFormat,
-    JsonError,
+    ConfigError,
+    FileError,
+    InvalidDataFormatError,
     PBDError,
     UserHasNotDefinedCustomConfiguration,
 )
@@ -57,13 +58,13 @@ class MultiMediaManager:
 
             except (TypeError, ValueError) as e:
 
-                raise PBDError.hierarchy(e) from e
+                raise ConfigError.hierarchy(e) from e
 
         except UserHasNotDefinedCustomConfiguration:
 
             return
 
-        except JsonError as e:
+        except (FileError, InvalidDataFormatError) as e:
 
             ui.line(
                 "[!]: Failed to load preferences about media formats.",
@@ -94,7 +95,7 @@ class MultiMediaManager:
                 raise UserHasNotDefinedCustomConfiguration()
 
             elif not isinstance(codec_setting, str):
-                raise InvalidDataFormat()
+                raise InvalidDataFormatError()
 
             else:
                 return codec_setting
@@ -103,7 +104,7 @@ class MultiMediaManager:
 
             pass
 
-        except JsonError as e:
+        except (FileError, InvalidDataFormatError) as e:
 
             ui.line(
                 f"[!]: Failed to load [@@{key}@@.], "
@@ -400,9 +401,7 @@ class MultiMediaManager:
                 except Exception:
                     pass
 
-                error = PBDError.cast(
-                    error
-                )
+                error = PBDError.hierarchy(error)
 
                 progress = write_progress(
                     progress,

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import csv
 import json
-import shutil
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
 from .errors import PBDError
 
 
@@ -17,39 +19,25 @@ class BaseFile:
 
         self._path = Path(path)
 
-    def backup(self) -> None:
+    @contextmanager
+    def _handle_errors(
+        self,
+    ) -> Generator[None, None, None]:
 
-        if not self._path.exists():
-            return
+        try:
 
-        backup_path = self._path.with_suffix(
-            self._path.suffix + ".bak"
-        )
+            yield
 
-        shutil.copy2(
-            self._path,
-            backup_path,
-        )
+        except Exception as error:
 
-    def restore(self) -> None:
-
-        backup_path = self._path.with_suffix(
-            self._path.suffix + ".bak"
-        )
-
-        if not backup_path.exists():
-            return
-
-        shutil.copy2(
-            backup_path,
-            self._path,
-        )        
+            raise PBDError.hierarchy(error) from None
 
 
 class JsonFile(BaseFile):
 
     def load(self) -> Any:
-        try:
+
+        with self._handle_errors():
         
             with self._path.open(
                 "r",
@@ -58,16 +46,12 @@ class JsonFile(BaseFile):
 
                 return json.load(file)
 
-        except Exception as e:
-
-            raise PBDError.hierarchy(e) from None
-
     def save(
         self,
         data: Any,
     ) -> None:
 
-        try:
+        with self._handle_errors():
 
             self._path.parent.mkdir(
                 parents=True,
@@ -87,10 +71,6 @@ class JsonFile(BaseFile):
                     default=str,
                 )
 
-        except Exception as e:
-
-            raise PBDError.hierarchy(e) from None
-
 
 class CsvFile(BaseFile):
 
@@ -107,25 +87,29 @@ class CsvFile(BaseFile):
 
     def read_lines(self) -> list[str]:
 
-        if not self._path.exists():
-            return []
+        with self._handle_errors():
 
-        return self._path.read_text(
-            encoding="utf-8",
-        ).splitlines()
+            if not self._path.exists():
+                return []
+
+            return self._path.read_text(
+                encoding="utf-8",
+            ).splitlines()
 
     def append_row(
         self,
         *columns: Any,
     ) -> None:
 
-        with self._path.open(
-            "a",
-            encoding="utf-8",
-            newline="",
-        ) as file:
+        with self._handle_errors():
 
-            csv.writer(file).writerow(columns)
+            with self._path.open(
+                "a",
+                encoding="utf-8",
+                newline="",
+            ) as file:
+
+                csv.writer(file).writerow(columns)
 
     def truncate_last(
         self,
@@ -144,63 +128,67 @@ class CsvFile(BaseFile):
 
     def _purge_blank_lines(self) -> None:
 
-        lines = [
-            line
-            for line in self.read_lines()
-            if line.strip()
-        ]
+        with self._handle_errors():
 
-        with self._path.open(
-            "w",
-            encoding="utf-8",
-            newline="",
-        ) as file:
+            lines = [
+                line
+                for line in self.read_lines()
+                if line.strip()
+            ]
 
-            csv.writer(file).writerows(
-                [line]
-                for line in lines
-            )
+            with self._path.open(
+                "w",
+                encoding="utf-8",
+                newline="",
+            ) as file:
+
+                csv.writer(file).writerows(
+                    [line]
+                    for line in lines
+                )
 
     def _truncate_last(self) -> bool:
 
-        if not self._path.exists():
-            return False
+        with self._handle_errors():
 
-        with self._path.open("rb+") as file:
-
-            file.seek(0, 2)
-            size = file.tell()
-
-            if size == 0:
+            if not self._path.exists():
                 return False
 
-            position = size - 1
+            with self._path.open("rb+") as file:
 
-            # Salta i terminatori dell'ultima riga.
-            while position >= 0:
+                file.seek(0, 2)
+                size = file.tell()
 
-                file.seek(position)
+                if size == 0:
+                    return False
 
-                if file.read(1) not in (
-                    b"\r",
-                    b"\n",
-                ):
-                    break
+                position = size - 1
 
-                position -= 1
+                # Salta i terminatori dell'ultima riga.
+                while position >= 0:
 
-            # Cerca il terminatore della riga precedente.
-            while position >= 0:
+                    file.seek(position)
 
-                file.seek(position)
+                    if file.read(1) not in (
+                        b"\r",
+                        b"\n",
+                    ):
+                        break
 
-                if file.read(1) == b"\n":
-                    file.truncate(position + 1)
-                    return True
+                    position -= 1
 
-                position -= 1
+                # Cerca il terminatore della riga precedente.
+                while position >= 0:
 
-            # Il file conteneva una sola riga.
-            file.truncate(0)
+                    file.seek(position)
 
-            return True
+                    if file.read(1) == b"\n":
+                        file.truncate(position + 1)
+                        return True
+
+                    position -= 1
+
+                # Il file conteneva una sola riga.
+                file.truncate(0)
+
+                return True

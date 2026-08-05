@@ -9,11 +9,11 @@ from .const import (
     LISTS_DIR,
 )
 from .errors import (
-    InvalidDataFormat,
-    JsonError,
+    FileError,
+    FileOperationError,
+    InvalidDataFormatError,
     PBDError,
     UserHasNotDefinedCustomConfiguration,
-    UnableToPerformFileOperation,
 )
 from .ui import ui
 
@@ -156,12 +156,14 @@ class StorageDirs:
         # OSError a PBDError
 
         try:
+
             path.mkdir(
                 parents=True,
                 exist_ok=True,
             )
 
         except OSError as e:
+            
             raise PBDError.hierarchy(e) from e
 
     @classmethod
@@ -199,13 +201,13 @@ class StorageDirs:
 
                 else:
 
-                    raise InvalidDataFormat()
+                    raise InvalidDataFormatError()
 
             except UserHasNotDefinedCustomConfiguration:
 
                 actual_user_root = None
 
-            except JsonError as e:
+            except (FileError, InvalidDataFormatError) as e:
 
                 ui.line(
                     "[!]: Failed to load storage path.",
@@ -304,7 +306,7 @@ class StorageDirs:
 
                 cls._mkdir(root)
 
-            except UnableToPerformFileOperation as e:
+            except FileOperationError as e:
 
                 ui.line(
                     f"[!]: Failed to set storage path: "
@@ -330,7 +332,7 @@ class StorageDirs:
 
             cls.init()
 
-        except UnableToPerformFileOperation as e:
+        except FileOperationError as e:
 
             ui.line(
                 "[!]: Path init failed: ",

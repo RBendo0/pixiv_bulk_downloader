@@ -157,17 +157,19 @@ class PBDError(Exception):
         with_report: bool = False,
     ) -> None:
 
-        ui.line(
-            f"[!]: {message}",
-            ui.COLOR_ERROR
-        )
-
-        if with_report:
+        with ui.suspend_thread_rendering():
 
             ui.line(
-                f"    {self.report()}",
-                ui.COLOR_ERROR,
-            )    
+                f"[!]: {message}",
+                ui.COLOR_ERROR
+            )
+
+            if with_report:
+
+                ui.line(
+                    f"    {self.report()}",
+                    ui.COLOR_ERROR,
+                )    
 
     @classmethod
     def hierarchy(cls, e: Exception) -> "PBDError":
@@ -176,13 +178,20 @@ class PBDError(Exception):
             return e
 
         if isinstance(e, FileNotFoundError):
-            return UserHasNotDefinedCustomConfiguration(str(e))
+            return MissingFileError(str(e))
 
         if isinstance(e, OSError):
-            return UnableToPerformFileOperation(str(e))
+            return FileOperationError(str(e))
 
-        if isinstance(e, (TypeError, ValueError)):
-            return InvalidDataFormat(str(e))
+        if isinstance(
+            e,
+            (
+                KeyError,
+                TypeError,
+                ValueError,
+            ),
+        ):
+            return InvalidDataFormatError(str(e))
 
         return PBDError(str(e))
 
@@ -276,23 +285,23 @@ class DownloadRateLimitError(RateLimitError):
         return False
     
 
-class JsonError(PBDError):
+class FileError(PBDError):
 
     @classmethod
     def info(cls) -> str:
 
-        return "JSON File or Data Error"
+        return "File I/O Error"
 
 
-class UserHasNotDefinedCustomConfiguration(JsonError):
+class MissingFileError(FileError):
 
     @classmethod
     def info(cls) -> str:
 
-        return "User Has Not Defined Custom Configuration"
+        return "File Not Found"
 
 
-class UnableToPerformFileOperation(JsonError):
+class FileOperationError(FileError):
 
     @classmethod
     def info(cls) -> str:
@@ -300,10 +309,113 @@ class UnableToPerformFileOperation(JsonError):
         return "Unable To Perform File Operation"
 
 
-class InvalidDataFormat(JsonError):
+class InvalidDataFormatError(PBDError):
 
     @classmethod
     def info(cls) -> str:
 
-        return "Invalid JSON Data Format"
+        return "Invalid Data Format"
 
+
+class ConfigError(PBDError):
+
+    @classmethod
+    def info(cls) -> str:
+        return "Configuration Error"
+
+    @classmethod
+    def hierarchy(
+        cls,
+        error: Exception,
+    ) -> PBDError:
+
+        error = PBDError.hierarchy(error)
+
+        if isinstance(
+            error,
+            MissingFileError,
+        ):
+            return UserHasNotDefinedCustomConfiguration(
+                str(error)
+            )
+
+        return error
+
+    
+class UserHasNotDefinedCustomConfiguration(ConfigError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "User Has Not Defined Custom Configuration"
+
+
+class EncoderError(PBDError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Encoder Error"
+
+
+class FFmpegError(EncoderError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "FFmpeg Error"
+
+
+class FFmpegExecutableError(FFmpegError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "FFmpeg Executable Error"
+
+    @classmethod
+    def hierarchy(
+        cls,
+        error: Exception,
+    ) -> PBDError:
+
+        if isinstance(error, OSError):
+            return cls(str(error))
+
+        return PBDError.hierarchy(error)
+
+
+class FFmpegExecutionError(FFmpegError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "FFmpeg Execution Error"
+
+
+class EncoderStreamError(EncoderError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Encoder Stream Error"    
+
+    @classmethod
+    def hierarchy(
+        cls,
+        error: Exception,
+    ) -> PBDError:
+
+        error = PBDError.hierarchy(error)
+
+        if isinstance(
+            error,
+            (
+                FileError,
+                InvalidDataFormatError,
+            ),
+        ):
+
+            return cls(str(error))
+
+        return error

@@ -8,8 +8,9 @@ from .const import (
     DEFAULT_ROOT,
 )
 from .errors import (
-    InvalidDataFormat,
-    JsonError,
+    ConfigError,
+    FileError,
+    InvalidDataFormatError,
     UserHasNotDefinedCustomConfiguration,
 )
 from .iofile import JsonFile
@@ -27,6 +28,43 @@ class Config:
     _backup_file: Path = _config_file.with_suffix(
         _config_file.suffix + ".bak"
     )
+
+    @classmethod
+    def _load_file(
+        cls,
+        path: Path,
+    ) -> Any:
+
+        try:
+
+            return JsonFile(
+                path
+            ).load()
+
+        except Exception as error:
+
+            raise ConfigError.hierarchy(
+                error
+            ) from None
+
+    @classmethod
+    def _save_file(
+        cls,
+        path: Path,
+        data: Any,
+    ) -> None:
+
+        try:
+
+            JsonFile(
+                path
+            ).save(data)
+
+        except Exception as error:
+
+            raise ConfigError.hierarchy(
+                error
+            ) from None
 
     @classmethod
     def _resolve_path(
@@ -79,12 +117,10 @@ class Config:
         key: str,
     ) -> Any | None:
 
-        config = JsonFile(
-            cls._config_file
-        ).load()
+        config = cls._load_file(cls._config_file)
 
         if not isinstance(config, dict):
-            raise InvalidDataFormat(
+            raise InvalidDataFormatError(
                 "conf:load: "
                 "expected key/value format."
             )
@@ -99,12 +135,10 @@ class Config:
 
         try:
 
-            config = JsonFile(
-                cls._config_file
-            ).load()
+            config = cls._load_file(cls._config_file)
 
             if not isinstance(config, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     f"conf:bkup '{cls._config_file.name}': "
                     "expected key/value format."
                 )
@@ -118,12 +152,10 @@ class Config:
 
         try:
 
-            backup = JsonFile(
-                cls._backup_file
-            ).load()
+            backup = cls._load_file(cls._backup_file)
 
             if not isinstance(backup, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     f"conf:bkup '{cls._backup_file.name}': "
                     "expected key/value format."
                 )
@@ -134,9 +166,7 @@ class Config:
 
         cls._set_path(backup, key, value)
 
-        JsonFile(
-            cls._backup_file
-        ).save(backup)
+        cls._save_file(cls._backup_file, backup)
 
         return True
 
@@ -149,12 +179,10 @@ class Config:
 
         try:
 
-            config = JsonFile(
-                cls._config_file
-            ).load()
+            config = cls._load_file(cls._config_file)
 
             if not isinstance(config, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     "conf:save: "
                     "expected key/value format."
                 )
@@ -165,9 +193,7 @@ class Config:
 
         cls._set_path(config, key, value)
 
-        JsonFile(
-            cls._config_file
-        ).save(config)
+        cls._save_file(cls._config_file, config)
 
     @classmethod
     def restore(
@@ -177,12 +203,10 @@ class Config:
 
         try:
 
-            backup = JsonFile(
-                cls._backup_file
-            ).load()
+            backup = cls._load_file(cls._backup_file)
 
             if not isinstance(backup, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     f"conf:rest '{cls._backup_file.name}': "
                     "expected key/value format."
                 )
@@ -196,12 +220,10 @@ class Config:
 
         try:
 
-            config = JsonFile(
-                cls._config_file
-            ).load()
+            config = cls._load_file(cls._config_file)
 
             if not isinstance(config, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     f"conf:rest '{cls._config_file.name}': "
                     "expected key/value format."
                 )
@@ -212,15 +234,11 @@ class Config:
 
         cls._set_path(config, key, value)
 
-        JsonFile(
-            cls._config_file
-        ).save(config)
+        cls._save_file(cls._config_file, config)
 
         cls._set_path(backup, key, "",)
 
-        JsonFile(
-            cls._backup_file
-        ).save(backup)
+        cls._save_file(cls._backup_file, backup)
 
     @classmethod
     def save_with_interact(
@@ -237,7 +255,7 @@ class Config:
 
             backup_available = config.backup(key)
 
-        except JsonError as e:
+        except (FileError, InvalidDataFormatError) as e:
 
             e.notify(
                 "Unable to create a backup of the current configuration.",
@@ -248,7 +266,7 @@ class Config:
 
             config.save(key, value)
 
-        except JsonError as e:
+        except (FileError, InvalidDataFormatError) as e:
 
             e.notify(
                 f"Unable to save the new {subject}.",
@@ -277,7 +295,7 @@ class Config:
 
                         config.restore(key)
 
-                    except JsonError as e:
+                    except (FileError, InvalidDataFormatError) as e:
 
                         e.notify(
                             "Unable to restore previous settings.",
@@ -361,9 +379,7 @@ class Config:
                 }
             }
 
-            JsonFile(
-                cls._advanced_file
-            ).save(advanced)
+            Config._save_file(cls._advanced_file, advanced)
 
         @classmethod
         def show_and_reset_settings(cls) -> None:
@@ -397,12 +413,10 @@ class Config:
             key: str,
         ) -> Any | None:
 
-            advanced = JsonFile(
-                cls._advanced_file
-            ).load()
+            advanced = Config._load_file(cls._advanced_file)
 
             if not isinstance(advanced, dict):
-                raise InvalidDataFormat(
+                raise InvalidDataFormatError(
                     "conf:adv:load: "
                     "expected key/value format."
                 )

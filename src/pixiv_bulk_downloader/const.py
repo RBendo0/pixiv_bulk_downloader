@@ -23,6 +23,12 @@ FFMPEG_EXECUTABLE: Final[Path] = (
     / "ffmpeg.exe"
 )
 
+FFMPEG_LOG_DIR: Final[Path] = (
+    DEFAULT_ROOT
+    / "logs"
+    / "ffmpeg"
+)
+
 # CARTELLA DELLE IMPOSTAZIONI: salvata sono nella root di default
 CONF_DIR: Final[Path] = Path("conf")
 

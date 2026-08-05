@@ -4,12 +4,15 @@ import re
 import time
 import weakref
 import winsound
+from collections.abc import Generator
+from contextlib import contextmanager
 from ctypes import wintypes
 from dataclasses import dataclass, replace
 from shutil import get_terminal_size
 from threading import (
     Event,
     Lock,
+    RLock,
     Thread,
     current_thread,
     get_ident,
@@ -45,7 +48,16 @@ class UI:
     KEY_ESCAPE = "\x1b"
     KEY_SPACE = " "
 
-    _console_lock = Lock()
+    _console_lock = RLock()
+
+    @classmethod
+    @contextmanager
+    def suspend_thread_rendering(
+        cls,
+    ) -> Generator[None, None, None]:
+
+        with cls._console_lock:
+            yield
 
     @classmethod
     def _key_name(

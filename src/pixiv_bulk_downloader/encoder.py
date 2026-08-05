@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import math
 import subprocess
-import tempfile
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import IO, Any, Literal
+
+from .const import FFMPEG_LOG_DIR
+from .errors import (
+    EncoderStreamError,
+    FFmpegExecutableError,
+    FFmpegExecutionError,
+    InvalidDataFormatError,
+)
 
 MediaFormat = Literal["gif", "webm", "mp4"]
 FrameSpec = Mapping[str, Any]
@@ -32,8 +40,11 @@ class Encoder:
     ) -> None:
         self._ffmpeg = ffmpeg
 
+        self._log_id: int | None = None
+
         self._process: subprocess.Popen[bytes] | None = None
         self._error_log: IO[bytes] | None = None
+        self._error_log_path: Path | None = None
 
         self._frames: Sequence[FrameSpec] = ()
         self._frame_index = 0
@@ -45,16 +56,18 @@ class Encoder:
         index: int,
     ) -> int:
         try:
+
             delay_ms = int(frame["delay"])
+
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(
-                f"Delay non valido per il frame all'indice {index}"
+
+            raise InvalidDataFormatError(
+                f"Invalid delay at index {index}"
             ) from error
 
         if delay_ms <= 0:
-            raise ValueError(
-                f"Delay non positivo per il frame all'indice {index}: "
-                f"{delay_ms}"
+            raise InvalidDataFormatError(
+                f"Delay must be positive: index={index} delay={delay_ms}"
             )
 
         return delay_ms
@@ -65,8 +78,8 @@ class Encoder:
         frames: Sequence[FrameSpec],
     ) -> int:
         if not frames:
-            raise ValueError(
-                "La conversione richiede almeno un frame"
+            raise InvalidDataFormatError(
+                "No frames provided"
             )
 
         tick_ms = cls._delay_from_frame(frames[0], 0)
@@ -78,8 +91,8 @@ class Encoder:
             )
 
         if tick_ms <= 0:
-            raise ValueError(
-                "Impossibile calcolare una base temporale valida"
+            raise InvalidDataFormatError(
+                "Delays time must be positive"
             )
 
         return tick_ms
@@ -102,9 +115,8 @@ class Encoder:
             ]
 
         if not codec:
-            raise ValueError(
-                f"Il formato {format_name} richiede "
-                "il nome dell'encoder FFmpeg"
+            raise InvalidDataFormatError(
+                f"No codec provided for {format_name} format"
             )
 
         even_dimensions = (
@@ -143,12 +155,9 @@ class Encoder:
                 str(output_path),
             ]
 
-        raise ValueError(
-            f"Formato non supportato: {format_name}"
-        )
-
     def start(
         self,
+        log_id: int,
         *,
         format_name: MediaFormat,
         output_path: Path,
@@ -162,6 +171,9 @@ class Encoder:
         metadata Ugoira. Ogni elemento deve esporre almeno la chiave
         "delay". Il campo "file" resta competenza del chiamante.
         """
+
+        self._log_id = log_id
+
         self._frames = frames
         self._frame_index = 0
         self._tick_ms = self._common_delay_tick_ms(frames)
@@ -193,11 +205,30 @@ class Encoder:
             ),
         ]
 
-        self._error_log = tempfile.TemporaryFile(
-            mode="w+b",
+        FFMPEG_LOG_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        timestamp = datetime.now().strftime(
+            "%Y%m%d_%H%M%S"
+        )
+
+        self._error_log_path = (
+            FFMPEG_LOG_DIR
+            / (
+                f"{timestamp}_"
+                f"{log_id}_"
+                f"{output_path.name}.log"
+            )
+        )
+
+        self._error_log = self._error_log_path.open(
+            "w+b"
         )
 
         try:
+
             self._process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -206,13 +237,18 @@ class Encoder:
             )
 
             if self._process.stdin is None:
-                raise RuntimeError(
-                    "Impossibile aprire stdin di FFmpeg"
+                raise EncoderStreamError(
+                    "FFmpeg input stream is unavailable"
                 )
 
-        except BaseException:
-            self._cleanup_process(kill=True)
-            raise
+        except Exception as e:
+
+            self._cleanup_process(
+                kill=True,
+                discard_log=False,
+            )
+
+            raise FFmpegExecutableError.hierarchy(e) from e
 
     def add(
         self,
@@ -248,12 +284,18 @@ class Encoder:
             )
 
         try:
+
             for _ in range(repetitions):
                 self._process.stdin.write(image_data)
 
-        except BaseException:
-            self._cleanup_process(kill=True)
-            raise
+        except Exception as e:
+
+            self._cleanup_process(
+                kill=True,
+                discard_log=False,
+            )
+
+            raise EncoderStreamError.hierarchy(e) from e
 
         self._frame_index += 1
 
@@ -269,7 +311,12 @@ class Encoder:
 
         if self._frame_index != len(self._frames):
             missing = len(self._frames) - self._frame_index
-            self._cleanup_process(kill=True)
+
+            self._cleanup_process(
+                kill=True,
+                discard_log=False,
+            )
+
             raise RuntimeError(
                 "Conversione incompleta: "
                 f"mancano {missing} immagini"
@@ -281,12 +328,19 @@ class Encoder:
 
         assert stdin is not None
 
+        success = False
+
         try:
+
             stdin.close()
             return_code = process.wait()
 
             if return_code != 0:
-                error_text = self._read_error_log(error_log)
+
+                error_text = self._read_error_log(
+                    error_log
+                )
+
                 raise RuntimeError(
                     f"FFmpeg è terminato con codice {return_code}."
                     + (
@@ -296,8 +350,14 @@ class Encoder:
                     )
                 )
 
+            success = True
+
         finally:
-            self._cleanup_process(kill=False)
+
+            self._cleanup_process(
+                kill=False,
+                discard_log=success,
+            )
 
     @staticmethod
     def _read_error_log(
@@ -317,7 +377,9 @@ class Encoder:
         self,
         *,
         kill: bool,
-    ) -> None:
+        discard_log: bool,
+    ) -> None:    
+
         process = self._process
 
         if process is not None:
@@ -336,8 +398,17 @@ class Encoder:
         if self._error_log is not None:
             self._error_log.close()
 
+        if (
+            discard_log
+            and self._error_log_path is not None
+            and self._error_log_path.exists()
+        ):
+            self._error_log_path.unlink()
+
         self._process = None
         self._error_log = None
+        self._error_log_path = None
+        self._log_id = None
         self._frames = ()
         self._frame_index = 0
         self._tick_ms = 0
