@@ -28,9 +28,9 @@ class Encoder:
 
     def __init__(
         self,
-        ffmpeg: str | Path = "ffmpeg",
+        ffmpeg: Path,
     ) -> None:
-        self._ffmpeg = Path(ffmpeg)
+        self._ffmpeg = ffmpeg
 
         self._process: subprocess.Popen[bytes] | None = None
         self._error_log: IO[bytes] | None = None

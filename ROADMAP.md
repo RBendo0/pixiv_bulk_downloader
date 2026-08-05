@@ -3,17 +3,15 @@
 ## Stato attuale
 
 L’architettura principale è sostanzialmente completata.
-Sono operativi il sistema concorrente, il renderer, i principali workflow di download, la configurazione persistente e la gestione della Storage Root.
+È stata completata l’integrazione della conversione delle ugoira (GIF, WebM e MP4) direttamente nel workflow di download, mantenendo invariata l’architettura concorrente.
 
-La fase corrente riguarda il completamento del porting alla nuova gestione degli errori e l’integrazione della conversione delle ugoira.
+La fase corrente riguarda il consolidamento della gestione degli errori e il completamento del refactoring dell’infrastruttura.
 
 ## Breve termine
 
-* Completare il porting degli errori nei moduli residui, a partire da `animation`.
+* Completare il porting degli errori nei moduli residui.
+* Rifattorizzare la gerarchia degli errori, introducendo una `Hierarchy` specializzata per dominio.
 * Collaudare `StorageDirs`: default, configurazione, CLI e rami di errore simulati.
-* Completare `MultiMediaManager`.
-* Implementare conversione ugoira in GIF e WebM.
-* Integrare la conversione nel workflow di download.
 * Eseguire il collaudo generale dei workflow principali.
 * Commit completo e aggiornamento di roadmap, Decision Log e documentazione.
 
@@ -32,7 +30,7 @@ La fase corrente riguarda il completamento del porting alla nuova gestione degli
 * Automatizzare i test dei percorsi di errore.
 * Convertire gli ZIP ugoira già presenti nell’archivio.
 * Aggiungere backup automatici dei file operativi.
-* Valutare supporto MP4 e ulteriori miglioramenti UI e prestazionali.
+* Valutare ulteriori miglioramenti UI e prestazionali.
 
 ## Pubblicazione
 

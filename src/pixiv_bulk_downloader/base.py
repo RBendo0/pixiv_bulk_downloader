@@ -5,6 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
+from .animation import m3
 from .const import (
     FETCH_CHECKPOINT_FILE,
     METADATA_FILE,
@@ -264,6 +265,14 @@ class PixivBaseDownloader:
                     path=str(work_dir),
                     fname=fname,
                 )                            
+
+                if frames is not None:
+
+                    return m3.build_animation(
+                        progress=progress,
+                        zip_path=work_dir / fname,
+                        frames=frames,
+                    )
 
                 return True
 

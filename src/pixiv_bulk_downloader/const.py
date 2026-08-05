@@ -13,6 +13,16 @@ DEFAULT_ROOT: Final[Path] = (
     else Path.home() / "pbd"
 )
 
+TOOLS_DIR: Final[Path] = Path("tools")
+
+FFMPEG_EXECUTABLE: Final[Path] = (
+    DEFAULT_ROOT
+    / TOOLS_DIR
+    / "ffmpeg"
+    / "bin"
+    / "ffmpeg.exe"
+)
+
 # CARTELLA DELLE IMPOSTAZIONI: salvata sono nella root di default
 CONF_DIR: Final[Path] = Path("conf")
 

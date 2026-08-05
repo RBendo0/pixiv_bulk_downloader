@@ -11,6 +11,7 @@ from .const import (
     DEFAULT_CODEC_SETTINGS,
     DEFAULT_PREFERRED_MEDIA_FORMATS,
     FFMPEG_ENCODERS,
+    FFMPEG_EXECUTABLE,
 )
 from .encoder import Encoder, FrameSpec, MediaFormat
 from .errors import (
@@ -20,7 +21,6 @@ from .errors import (
     UserHasNotDefinedCustomConfiguration,
 )
 from .pbd_types import (
-    AnimationFrame,
     CodecSettings,
     PreferredMediaFormats,
     ToggleOption,
@@ -236,71 +236,75 @@ class MultiMediaManager:
         progress: str,
         zip_path: Path,
         frames: Sequence[FrameSpec],
-    ) -> None:
+    ) -> bool:
 
         formats: list[
             tuple[
                 MediaFormat,
-                bool,
                 str | None,
             ]
-        ] = [
-            (
-                "gif",
-                cls._preferred_media_formats.gif,
-                None,
-            ),
-            (
-                "webm",
-                cls._preferred_media_formats.webm,
-                cls._codec.webm,
-            ),
-            (
-                "mp4",
-                cls._preferred_media_formats.mp4,
-                cls._codec.mp4,
-            ),
-        ]
+        ] = []
 
-        encoder = Encoder()
-
-        frame_total = len(frames)
-        frame_width = len(str(frame_total))
-
-        completed_statuses: list[str] = []
-
-        def write_progress(
-            current_status: str = "",
-        ) -> None:
-
-            status_parts = [
-                *completed_statuses,
-            ]
-
-            if current_status:
-                status_parts.append(current_status)
-
-            status_suffix = "".join(
+        if cls._preferred_media_formats.gif:
+            formats.append(
                 (
-                    f"{ui.COLOR_DEFAULT}"
-                    f" | "
-                    f"{status}"
+                    "gif",
+                    None,
                 )
-                for status in status_parts
             )
 
-            ui.Renderer.in_thread_write(
+        if cls._preferred_media_formats.webm:
+            formats.append(
+                (
+                    "webm",
+                    FFMPEG_ENCODERS[cls._codec.webm],
+                )
+            )
+
+        if cls._preferred_media_formats.mp4:
+            formats.append(
+                (
+                    "mp4",
+                    FFMPEG_ENCODERS[cls._codec.mp4],
+                )
+            )
+
+        encoder = Encoder(FFMPEG_EXECUTABLE)
+
+        frame_total = len(frames)
+
+        def write_progress(
+            progress: str,
+            status: str,
+            *,
+            history: bool = False,
+        ) -> str:
+
+            status_suffix = (
+                f"{ui.COLOR_DEFAULT}"
+                f" | "
+                f"{status}"
+            )
+
+            display_progress = (
                 progress + status_suffix
             )
 
+            ui.Renderer.in_thread_write(
+                display_progress
+            )
+
+            if history:
+                return display_progress
+
+            return progress
+
+        completed = True
+
         for (
             format_name,
-            enabled,
-            codec_symbol,
+            codec,
         ) in formats:
-
-            if not enabled:
-                continue
 
             format_label = format_name.upper()
 
@@ -311,12 +315,6 @@ class MultiMediaManager:
 
             try:
 
-                codec = (
-                    None
-                    if codec_symbol is None
-                    else FFMPEG_ENCODERS[codec_symbol]
-                )
-
                 encoder.start(
                     format_name=format_name,
                     output_path=output_path,
@@ -325,10 +323,10 @@ class MultiMediaManager:
                 )
 
                 write_progress(
+                    progress,
                     f"{ui.COLOR_INFO}"
                     f"Building {format_label} "
-                    f"[{0:0{frame_width}d}/"
-                    f"{frame_total:0{frame_width}d}] "
+                    f"[0/{frame_total}] "
                     f"0%"
                 )
 
@@ -347,6 +345,7 @@ class MultiMediaManager:
                     ):
 
                         try:
+                            
                             frame_name = str(
                                 frame["file"]
                             )
@@ -357,15 +356,13 @@ class MultiMediaManager:
                         ) as error:
 
                             raise ValueError(
-                                "Nome del frame non valido "
-                                f"all'indice {frame_index - 1}"
+                                f"Invalid frame name at index {frame_index - 1}"
                             ) from error
-
+                            
                         if frame_name not in archive_names:
 
                             raise FileNotFoundError(
-                                f"Frame {frame_name!r} "
-                                f"non presente in {zip_path.name}"
+                                f"Missing {frame_name!r} in {zip_path.name}"
                             )
 
                         image_data = archive.read(
@@ -383,11 +380,11 @@ class MultiMediaManager:
                         )
 
                         write_progress(
+                            progress,
                             f"{ui.COLOR_INFO}"
                             f"Building {format_label} "
-                            f"[{frame_index:0{frame_width}d}/"
-                            f"{frame_total:0{frame_width}d}] "
-                            f"{percentage}%"
+                            f"[{frame_index}/{frame_total}] "
+                            f"{percentage}%",
                         )
 
                 encoder.stop()
@@ -407,25 +404,26 @@ class MultiMediaManager:
                     error
                 )
 
-                write_progress(
+                progress = write_progress(
+                    progress,
                     f"{ui.COLOR_ERROR}"
                     f"{format_label} discarded: "
-                    f"{error.report()}"
+                    f"{error.report()}",
+                    history=True,
                 )
 
-                completed_statuses.append(
-                    f"{ui.COLOR_ERROR}"
-                    f"{format_label} discarded"
-                )
+                completed = False
 
                 continue
 
-            completed_statuses.append(
+            progress = write_progress(
+                progress,
                 f"{ui.COLOR_SUCCESS}"
-                f"{format_label} completed"
+                f"{format_label} completed",
+                history=True,
             )
 
-            write_progress()
+        return completed
 
 
 # Alias della classe di conversione delle animazioni in GIF e WEBM

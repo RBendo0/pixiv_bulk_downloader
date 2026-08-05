@@ -67,9 +67,3 @@ class PreferredMediaFormats:
 class CodecSettings:
     webm: str
     mp4: str
-
-
-@dataclass(frozen=True)
-class AnimationFrame:
-    image: "Image"
-    delay: int
