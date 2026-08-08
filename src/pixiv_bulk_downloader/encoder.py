@@ -261,14 +261,13 @@ class Encoder:
         dallo ZIP in memoria ma non decodificato.
         """
         if self._process is None or self._process.stdin is None:
-            raise RuntimeError(
-                "FFmpeg non è stato avviato"
+            raise EncoderStreamError(
+                "Encoder not ready. Ensure .start() is called before first .add()"
             )
 
         if self._frame_index >= len(self._frames):
-            raise RuntimeError(
-                "Sono state fornite più immagini "
-                "di quelle dichiarate in frames"
+            raise EncoderStreamError(
+                "Frame stream overflow: too many frames provided"
             )
 
         delay_ms = self._delay_from_frame(
@@ -276,12 +275,6 @@ class Encoder:
             self._frame_index,
         )
         repetitions = delay_ms // self._tick_ms
-
-        if repetitions <= 0:
-            raise ValueError(
-                "Numero di ripetizioni non valido per il frame "
-                f"all'indice {self._frame_index}"
-            )
 
         try:
 
@@ -305,8 +298,8 @@ class Encoder:
         del file da parte di FFmpeg.
         """
         if self._process is None or self._process.stdin is None:
-            raise RuntimeError(
-                "FFmpeg non è stato avviato"
+            raise EncoderStreamError(
+                "Encoder not ready. Ensure .start() is called before .stop()"
             )
 
         if self._frame_index != len(self._frames):
@@ -317,14 +310,13 @@ class Encoder:
                 discard_log=False,
             )
 
-            raise RuntimeError(
-                "Conversione incompleta: "
-                f"mancano {missing} immagini"
+            raise EncoderStreamError(
+                "Frame stream underflow: not enough frames provided "
+                f"(missing {missing} frames)"
             )
 
         process = self._process
         stdin = process.stdin
-        error_log = self._error_log
 
         assert stdin is not None
 
@@ -337,17 +329,11 @@ class Encoder:
 
             if return_code != 0:
 
-                error_text = self._read_error_log(
-                    error_log
-                )
+                assert self._error_log_path is not None
 
-                raise RuntimeError(
-                    f"FFmpeg è terminato con codice {return_code}."
-                    + (
-                        f"\n{error_text}"
-                        if error_text
-                        else ""
-                    )
+                raise FFmpegExecutionError(
+                    f"FFmpeg exited with code {return_code}. "
+                    f"For more details, see error log: {self._error_log_path.name}"
                 )
 
             success = True
