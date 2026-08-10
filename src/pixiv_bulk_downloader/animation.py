@@ -15,6 +15,7 @@ from .const import (
 )
 from .encoder import Encoder, FrameSpec, MediaFormat
 from .errors import (
+    AnimationError,
     ConfigError,
     FileError,
     InvalidDataFormatError,
@@ -234,6 +235,7 @@ class MultiMediaManager:
     @classmethod
     def build_animation(
         cls,
+        log_id: int,
         progress: str,
         zip_path: Path,
         frames: Sequence[FrameSpec],
@@ -300,127 +302,149 @@ class MultiMediaManager:
 
             return progress
 
-        completed = True
+        try:
 
-        for (
-            format_name,
-            codec,
-        ) in formats:
+            with zipfile.ZipFile(
+                zip_path,
+                "r",
+            ) as archive:
 
-            format_label = format_name.upper()
-
-            output_path = (
-                zip_path.parent
-                / f"a0.{format_name}"
-            )
-
-            try:
-
-                encoder.start(
-                    format_name=format_name,
-                    output_path=output_path,
-                    frames=frames,
-                    codec=codec,
+                archive_names = set(
+                    archive.namelist()
                 )
 
-                write_progress(
-                    progress,
-                    f"{ui.COLOR_INFO}"
-                    f"Building {format_label} "
-                    f"[0/{frame_total}] "
-                    f"0%"
-                )
+                for frame_index, frame in enumerate(
+                    frames,
+                    start=1,
+                ):
 
-                with zipfile.ZipFile(
-                    zip_path,
-                    "r",
-                ) as archive:
+                    try:
 
-                    archive_names = set(
-                        archive.namelist()
+                        frame_name = str(
+                            frame["file"]
+                        )
+
+                    except (KeyError, TypeError) as error:
+
+                        raise AnimationError(
+                            f"Invalid frame name at index {frame_index - 1}"
+                        ) from error
+
+                    if frame_name not in archive_names:
+
+                        raise AnimationError(
+                            f"Missing {frame_name!r} in {zip_path.name}"
+                        )
+
+                completed = True
+
+                for (
+                    format_name,
+                    codec,
+                ) in formats:
+
+                    format_label = format_name.upper()
+
+                    output_path = (
+                        zip_path.parent
+                        / f"a0.{format_name}"
                     )
 
-                    for frame_index, frame in enumerate(
-                        frames,
-                        start=1,
-                    ):
+                    try:
 
-                        try:
-                            
-                            frame_name = str(
-                                frame["file"]
-                            )
-
-                        except (
-                            KeyError,
-                            TypeError,
-                        ) as error:
-
-                            raise ValueError(
-                                f"Invalid frame name at index {frame_index - 1}"
-                            ) from error
-                            
-                        if frame_name not in archive_names:
-
-                            raise FileNotFoundError(
-                                f"Missing {frame_name!r} in {zip_path.name}"
-                            )
-
-                        image_data = archive.read(
-                            frame_name
-                        )
-
-                        encoder.add(
-                            image_data
-                        )
-
-                        percentage = (
-                            frame_index
-                            * 100
-                            // frame_total
+                        encoder.start(
+                            log_id,
+                            format_name=format_name,
+                            output_path=output_path,
+                            frames=frames,
+                            codec=codec,
                         )
 
                         write_progress(
                             progress,
                             f"{ui.COLOR_INFO}"
                             f"Building {format_label} "
-                            f"[{frame_index}/{frame_total}] "
-                            f"{percentage}%",
+                            f"[0/{frame_total}] "
+                            f"0%"
                         )
 
-                encoder.stop()
+                        for frame_index, frame in enumerate(
+                            frames,
+                            start=1,
+                        ):
+                                
+                            frame_name = str(
+                                frame["file"]
+                            )
 
-            except Exception as error:
+                            image_data = archive.read(
+                                frame_name
+                            )
 
-                # Se l'errore è avvenuto fuori da Encoder.add(),
-                # per esempio durante la lettura dello ZIP, assicura
-                # comunque la chiusura del processo FFmpeg.
-                try:
-                    encoder.stop()
+                            encoder.add(
+                                image_data
+                            )
 
-                except Exception:
-                    pass
+                            percentage = (
+                                frame_index
+                                * 100
+                                // frame_total
+                            )
 
-                error = PBDError.hierarchy(error)
+                            write_progress(
+                                progress,
+                                f"{ui.COLOR_INFO}"
+                                f"Building {format_label} "
+                                f"[{frame_index}/{frame_total}] "
+                                f"{percentage}%",
+                            )
 
-                progress = write_progress(
-                    progress,
-                    f"{ui.COLOR_ERROR}"
-                    f"{format_label} discarded: "
-                    f"{error.report()}",
-                    history=True,
-                )
+                        encoder.stop()
 
-                completed = False
+                    except Exception as error:
 
-                continue
+                        # Se l'errore è avvenuto fuori da Encoder.add(),
+                        # per esempio durante la lettura dello ZIP, assicura
+                        # comunque la chiusura del processo FFmpeg.
+                        encoder.stop(ignore_errors=True)
 
-            progress = write_progress(
-                progress,
-                f"{ui.COLOR_SUCCESS}"
-                f"{format_label} completed",
-                history=True,
-            )
+                        error = PBDError.hierarchy(error)
+
+                        # storico console
+                        error.notify(
+                            f"Failed to encode {format_label} | "
+                            f"Artwork: <ID:{log_id}>",
+                            with_report=True,
+                        )
+
+                        # renderer
+                        progress = write_progress(
+                            progress,
+                            f"{ui.COLOR_ERROR}"
+                            f"{format_label} discarded",
+                            history=True,
+                        )
+
+                        completed = False
+
+                        continue
+
+                    progress = write_progress(
+                        progress,
+                        f"{ui.COLOR_SUCCESS}"
+                        f"{format_label} completed",
+                        history=True,
+                    )
+
+        except AnimationError:
+
+            raise
+
+        except Exception as error:
+
+            raise AnimationError(
+                f"Failed to process animation archive {zip_path.name!r}"
+            ) from error
 
         return completed
 

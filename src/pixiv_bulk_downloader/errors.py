@@ -350,7 +350,15 @@ class UserHasNotDefinedCustomConfiguration(ConfigError):
         return "User Has Not Defined Custom Configuration"
 
 
-class EncoderError(PBDError):
+class AnimationError(PBDError):
+
+    @classmethod
+    def info(cls) -> str:
+
+        return "Animation Error"
+
+
+class EncoderError(AnimationError):
 
     @classmethod
     def info(cls) -> str:

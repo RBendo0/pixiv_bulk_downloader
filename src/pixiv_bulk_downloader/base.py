@@ -12,6 +12,7 @@ from .const import (
     UGOIRA_ZIP_FILE,
 )
 from .errors import (
+    AnimationError,
     DownloadRateLimitError,
     PBDError,
     rcc,
@@ -107,17 +108,11 @@ class PixivBaseDownloader:
         if image_data.is_ugoira:
 
             ugoira_data = image_data.get("ugoira")
-            ugoira_metadata = ugoira_data["ugoira_metadata"]
-
-            zip_url = ugoira_metadata["zip_urls"]["medium"]
-
-            frames = ugoira_metadata["frames"]
+            zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
 
             links = [zip_url]
 
         else:
-
-            frames = None
 
             links = image_data.get_links()
 
@@ -199,12 +194,12 @@ class PixivBaseDownloader:
             
             future = cls.image_pool.submit(
                 cls._download_media,
+                image_data,
                 progress,
                 media_prefix,
                 link,
                 work_dir,
                 fname,
-                frames,
             )
 
             media_futures.append(future)
@@ -233,13 +228,20 @@ class PixivBaseDownloader:
     @classmethod
     def _download_media(
         cls,
+        metadata: PixivMetadata,
         progress: str,
         media_prefix: str,
         link: str,
         work_dir: Path,
         fname: str,
-        frames: list[dict] | None,
     ) -> bool:
+
+        """
+        Il parametro metadata fa riferimento all'oggetto PixivMetadata originale,
+        condiviso tra i worker, e deve essere trattato come di sola lettura.
+        Eventuali modifiche si rifletterebbero sull'oggetto originale e potrebbero
+        interferire con altri worker concorrenti.
+        """
 
         while True:
 
@@ -266,9 +268,12 @@ class PixivBaseDownloader:
                     fname=fname,
                 )                            
 
-                if frames is not None:
+                if metadata.is_ugoira:
+
+                    frames = metadata.get("ugoira")["ugoira_metadata"]["frames"]
 
                     return m3.build_animation(
+                        metadata.id,
                         progress=progress,
                         zip_path=work_dir / fname,
                         frames=frames,
@@ -306,16 +311,19 @@ class PixivBaseDownloader:
 
                 continue
 
-            except Exception as e:
+            except AnimationError as e:
 
-                e = PBDError.cast(e)
+                e.notify(
+                    f"Failed to build animation | "
+                    f"Artwork: <ID:{metadata.id}> "
+                    f"(checkpoint preserved)",
+                    with_report=True,
+                )
 
                 status = (
                     f" | "
                     f"{ui.COLOR_ERROR}"
-                    f"Download failed: "
-                    f"{e.report()} "
-                    f"(checkpoint preserved)"
+                    f"Animation building failed"
                 )
 
                 overflow = ui.Renderer.in_thread_overflow_width(
@@ -325,7 +333,7 @@ class PixivBaseDownloader:
                 display_progress = ui.Renderer.truncate_width(
                     progress,
                     overflow,
-                )                    
+                )
 
                 ui.Renderer.in_thread_write(
                     f"{display_progress} {fname}{status}"
@@ -333,6 +341,38 @@ class PixivBaseDownloader:
 
                 return False
 
+            except Exception as e:
+
+                e = PBDError.hierarchy(e)
+
+                e.notify(
+                    f"Failed to download media | "
+                    f"Artwork: <ID:{metadata.id}> "
+                    f"(checkpoint preserved)",
+                    with_report=True,
+                )
+
+                status = (
+                    f" | "
+                    f"{ui.COLOR_ERROR}"
+                    f"Download failed"
+                )
+
+                overflow = ui.Renderer.in_thread_overflow_width(
+                    progress + " " + fname + status
+                )
+
+                display_progress = ui.Renderer.truncate_width(
+                    progress,
+                    overflow,
+                )
+
+                ui.Renderer.in_thread_write(
+                    f"{display_progress} {fname}{status}"
+                )
+
+                return False
+            
     @classmethod
     def download(
         cls,
