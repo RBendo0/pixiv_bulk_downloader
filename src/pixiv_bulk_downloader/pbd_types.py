@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
-from PIL.Image import Image
-from pixivpy3.utils import JsonDict
+type JsonCollection = dict[str, Any]
 
-type JsonCollection = dict[str, JsonDict]
+
+MetadataType = Literal[
+    "artwork",
+    "author",
+]
+
+
+MetadataState = Literal[
+    "",
+    "pending",
+    "complete",
+]
 
 
 class CommandLineOptions(TypedDict):

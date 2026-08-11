@@ -269,44 +269,30 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         def check_for_artworks(
             local_ids: set[int],
             metadata_file: Path | None = None,
-            checkpoint_file: Path | None = None,
         ) -> None:
 
-            if (
-                metadata_file is not None
-                and checkpoint_file is None
-            ):
+            if metadata_file is None:
+                return
 
-                try:
+            try:
 
-                    image_data = PixivMetadata()
-                    image_data.load(metadata_file)
+                image_data = PixivMetadata.from_file(
+                    metadata_file
+                )
 
-                except Exception:
-                    
+                if image_data.state != "complete":
                     return
 
                 local_ids.add(image_data.id)
 
                 ui.line(
-                    "[+]: Found ",
+                    f"[+]: Found @@{len(local_ids)}@@. artworks.",
+                    tag_color=ui.COLOR_INFO,
                     history=False,
                 )
 
-                ui.line(
-                    f"{len(local_ids)}",
-                    ui.COLOR_INFO,
-                    home=False,
-                    clear=False,
-                    history=False,
-                )
-
-                ui.line(
-                    " artworks.",
-                    home=False,
-                    clear=False,
-                    history=False,
-                )
+            except Exception:
+                return
 
         if mode in ("missing", "chrono"):
 
@@ -472,7 +458,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     try:
 
-                        image_data: PixivMetadata = PixivMetadata(illust)
+                        image_data: PixivMetadata = PixivMetadata(
+                            type="artwork",
+                            state="pending",
+                            data=illust,
+                        )                        
 
                         if image_data.is_ugoira:
 
@@ -485,7 +475,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                                 ugoira_data,
                             )
 
-                        cls.save_index(image_data, bookmarks_path)
+                        cls.save_metadata(image_data, bookmarks_path)
                         urls.append(image_data)
 
                         current = len(urls)

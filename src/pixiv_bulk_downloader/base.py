@@ -7,8 +7,7 @@ from typing import TypeVar
 
 from .animation import m3
 from .const import (
-    FETCH_CHECKPOINT_FILE,
-    METADATA_FILE,
+    ARTWORK_METADATA_FILE,
     UGOIRA_ZIP_FILE,
 )
 from .errors import (
@@ -68,25 +67,6 @@ class PixivBaseDownloader:
         return w_dir
 
     @classmethod
-    def fetch_dir(
-        cls,
-        save_path: Path,
-        metadata: PixivMetadata,
-    ) -> PixivPath:
-
-        f_dir = (
-            PixivPath(save_path)
-            .work_dir(metadata)
-        )
-
-        f_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        return f_dir
-
-    @classmethod
     def _download_artwork(
         cls,
         progress: str,
@@ -114,46 +94,20 @@ class PixivBaseDownloader:
 
             links = image_data.get_links()
 
-        try:
+        overflow = ui.Renderer.in_thread_overflow_width(
+            progress, 
+            main=True,
+        )
 
-            overflow = ui.Renderer.in_thread_overflow_width(
-                progress, 
-                main=True,
-            )
+        progress = ui.Renderer.truncate_width(
+            progress,
+            overflow,
+        )
 
-            progress = ui.Renderer.truncate_width(
-                progress,
-                overflow,
-            )
-
-            ui.Renderer.in_thread_write(
-                progress,
-                main=True,
-            )
-
-            # Salva l'intero dump dei metadata, animazioni comprese
-            metadata_file = work_dir / METADATA_FILE
-            image_data.save(metadata_file)
-
-        except Exception as e:
-
-            e = PBDError.cast(e)                    
-
-            ui.line(
-                f"{progress} | ",
-                history=False,
-            )
-
-            ui.line(
-                f"[!]: Failed to save metadata: "
-                f"{e.report()} "
-                f"(checkpoint preserved)",
-                ui.COLOR_WARNING,
-                home=False,
-                clear=False,
-            )
-
-            keep_checkpoint = True
+        ui.Renderer.in_thread_write(
+            progress,
+            main=True,
+        )
 
         media_futures = []
 
@@ -214,14 +168,14 @@ class PixivBaseDownloader:
         # Qualcosa è andato storto: mantiene il checkpoint per un successivo tentativo di download
         if not keep_checkpoint:
 
-            checkpoint_file = (
+            image_data.state = "complete"
+
+            metadata_file = (
                 work_dir
-                / FETCH_CHECKPOINT_FILE
+                / ARTWORK_METADATA_FILE
             )
 
-            if checkpoint_file.exists():
-
-                checkpoint_file.unlink()
+            image_data.save(metadata_file)
 
     @classmethod
     def _download_media(
@@ -476,21 +430,11 @@ class PixivBaseDownloader:
         cls.default_abort.reset()            
 
     @classmethod
-    def save_index(
+    def save_metadata(
         cls,
         image_data: PixivMetadata,
         save_path: Path,
     ) -> None:
-
-        """
-        DEPRECATO: LA CARTELLA DI CHECKPOINT COINCIDE CON QUELL DELL'OPERA
-        # Directory temporanea utilizzata per il checkpoint.
-        # Viene eliminata dopo il completamento del download.        
-        fetch_dir = cls.fetch_dir(save_path, image_data.id)
-
-        # Crea percorso file indice
-        index_file = fetch_dir / FETCH_CHECKPOINT_FILE
-        """
 
         # Crea la cartella definitiva dell'opera.
         work_dir = cls.work_dir(
@@ -498,11 +442,11 @@ class PixivBaseDownloader:
             image_data,
         )
 
-        # Crea percorso file indice.
-        index_file = work_dir / FETCH_CHECKPOINT_FILE
+        # Crea percorso file metadata.
+        metadata_file = work_dir / ARTWORK_METADATA_FILE
 
-        # salva il record di dati
-        image_data.save(index_file)    
+        # Salva il metadata dell'opera nello stato corrente.
+        image_data.save(metadata_file)
 
     @classmethod
     def scan_archive(
@@ -511,7 +455,7 @@ class PixivBaseDownloader:
         *,
         shared_context: T,
         run_for_each_folder: Callable[
-            [T, Path | None, Path | None], 
+            [T, Path | None],
             None,
         ],
     ) -> None:
@@ -521,68 +465,15 @@ class PixivBaseDownloader:
             if not folder.is_dir():
                 continue
 
-            metadata_file = folder / METADATA_FILE
-            checkpoint_file = folder / FETCH_CHECKPOINT_FILE
+            metadata_file = (
+                folder
+                / ARTWORK_METADATA_FILE
+            )
 
             run_for_each_folder(
                 shared_context,
                 metadata_file if metadata_file.exists() else None,
-                checkpoint_file if checkpoint_file.exists() else None,
             )
-
-    @classmethod
-    def rebuild_index(
-        cls,
-        save_path: Path,
-    ) -> list[PixivMetadata]:
-
-        data: list[PixivMetadata] = []
-
-        def check_for_pending(
-            data: list[PixivMetadata],
-            metadata_file: Path | None = None,
-            checkpoint_file: Path | None = None,
-        ) -> None:
-
-            if checkpoint_file is not None:
-
-                try:
-
-                    image_data = PixivMetadata()
-                    image_data.load(checkpoint_file)
-
-                    data.append(image_data)
-
-                    ui.line(
-                        f"[+]: Found @@{len(data)}@@. pending jobs.",
-                        tag_color=ui.COLOR_INFO,
-                        history=False,
-                    )
-
-                except Exception as e:
-
-                    e = PBDError.cast(e)
-
-                    ui.line(
-                        f"[!]: Failed to load job: {checkpoint_file.parent.name}: "
-                        f"{e.report()}",
-                        ui.COLOR_ERROR,
-                    )
-
-        cls.scan_archive(
-            save_path,
-            shared_context=data,
-            run_for_each_folder=check_for_pending,
-        )
-
-        ui.line(
-            home=False,
-            clear=False,
-        )
-
-        data.sort(key=lambda x: x.id)
-
-        return data
 
     @classmethod
     def resume_pending_jobs(
@@ -597,33 +488,38 @@ class PixivBaseDownloader:
         def check_for_pending(
             data: list[PixivMetadata],
             metadata_file: Path | None = None,
-            checkpoint_file: Path | None = None,
         ) -> None:
 
-            if checkpoint_file is not None:
+            if metadata_file is None:
+                return
 
-                try:
+            try:
 
-                    image_data = PixivMetadata()
-                    image_data.load(checkpoint_file)
+                image_data = PixivMetadata.from_file(
+                    metadata_file
+                )
 
-                    data.append(image_data)
+                if image_data.state != "pending":
+                    return
 
-                    ui.line(
-                        f"[+]: Found @@{len(data)}@@. pending jobs.",
-                        tag_color=ui.COLOR_INFO,
-                        history=False,
-                    )
+                data.append(image_data)
 
-                except Exception as e:
+                ui.line(
+                    f"[+]: Found @@{len(data)}@@. pending jobs.",
+                    tag_color=ui.COLOR_INFO,
+                    history=False,
+                )
 
-                    e = PBDError.cast(e)
+            except Exception as e:
 
-                    ui.line(
-                        f"[!]: Failed to load job: {checkpoint_file.parent.name}: "
-                        f"{e.report()}",
-                        ui.COLOR_ERROR,
-                    )
+                e = PBDError.cast(e)
+
+                ui.line(
+                    f"[!]: Failed to load job: "
+                    f"{metadata_file.parent.name}: "
+                    f"{e.report()}",
+                    ui.COLOR_ERROR,
+                )
 
         cls.scan_archive(
             save_path,

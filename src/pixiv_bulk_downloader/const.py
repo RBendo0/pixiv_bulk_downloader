@@ -76,7 +76,8 @@ NOT_FOUND_CSV_PREFIX: Final[str] = "not_found_"
 DISCARDED_CSV_PREFIX: Final[str] = "discarded_"
 
 # FILES DELLE OPERE
-FETCH_CHECKPOINT_FILE: Final[Path] = Path("fetch.json")
-METADATA_FILE: Final[Path] = Path("metadata.json")
 UGOIRA_ZIP_FILE: Final[Path] = Path("ugoira.zip")
+
+ARTWORK_METADATA_FILE = Path("artwork.metadata.json")
+AUTHOR_METADATA_FILE = Path("author.metadata.json")
 
