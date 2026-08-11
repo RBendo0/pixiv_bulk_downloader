@@ -52,13 +52,12 @@ class PixivBaseDownloader:
     def work_dir(
         cls,
         save_path: Path,
-        id_: int,
-        title: str | None = None,
+        metadata: PixivMetadata,
     ) -> PixivPath:
 
         w_dir = (
             PixivPath(save_path)
-            .work_dir(id_, title)
+            .work_dir(metadata)
         )
 
         w_dir.mkdir(
@@ -72,12 +71,12 @@ class PixivBaseDownloader:
     def fetch_dir(
         cls,
         save_path: Path,
-        id_: int        
+        metadata: PixivMetadata,
     ) -> PixivPath:
 
         f_dir = (
             PixivPath(save_path)
-            .work_dir(id_)
+            .work_dir(metadata)
         )
 
         f_dir.mkdir(
@@ -101,8 +100,7 @@ class PixivBaseDownloader:
         # Crea la cartella di download
         work_dir = cls.work_dir(
             save_path,
-            image_data.id,
-            image_data.path_title,
+            image_data,
         )
 
         if image_data.is_ugoira:
@@ -497,8 +495,7 @@ class PixivBaseDownloader:
         # Crea la cartella definitiva dell'opera.
         work_dir = cls.work_dir(
             save_path,
-            image_data.id,
-            image_data.path_title,
+            image_data,
         )
 
         # Crea percorso file indice.

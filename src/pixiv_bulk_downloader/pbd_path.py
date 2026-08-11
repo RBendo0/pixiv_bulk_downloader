@@ -15,6 +15,7 @@ from .errors import (
     PBDError,
     UserHasNotDefinedCustomConfiguration,
 )
+from .metadata import PixivMetadata
 from .ui import ui
 
 _BasePath = type(Path())
@@ -99,19 +100,15 @@ class PixivPath(_BasePath):
         )
 
         return f"S_{bucket}"
-    
+
     def work_dir(
         self,
-        id_: int,
-        title: str | None = None,
+        metadata: PixivMetadata,
     ) -> "PixivPath":
 
-        bucket = self._get_bucket(id_)
+        bucket = self._get_bucket(metadata.id)
 
-        folder_name = str(id_)
-
-        if title is not None:
-            folder_name += f"_{title}"
+        folder_name = f"{metadata.id}_{metadata.path_title}"
 
         return PixivPath(
             self / bucket / folder_name

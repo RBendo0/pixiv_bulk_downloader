@@ -28,6 +28,18 @@
 - [x] Sostituito in `_download_media()` il vecchio `PBDError.cast()` con `PBDError.hierarchy()`.
 - [x] Conservazione del checkpoint collegata al fallimento della conversione tramite `return False`.
 
+### Rate limit download — test reale superato
+
+- [x] Intercettazione del rate limit durante il download di un media.
+- [x] Visualizzazione del countdown nel renderer.
+- [x] Attesa di 60 secondi.
+- [x] Nessun blocco degli altri worker/thread pool.
+- [x] Retry automatico del media interessato.
+- [x] Download del media completato dopo il retry.
+- [x] Opera completata correttamente.
+- [x] File metadata presente.
+- [x] Checkpoint rimosso dopo il completamento.
+
 ### Verifica immediata
 
 - [ ] Eseguire test end-to-end del normale flusso Ugoira.

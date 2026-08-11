@@ -302,7 +302,7 @@ class Encoder:
         *,
         ignore_errors: bool = False,
     ) -> None:
-        
+
         """
         Chiude la sessione di encoding corrente e libera le risorse
         associate al processo FFmpeg.
@@ -379,7 +379,7 @@ class Encoder:
 
             if not ignore_errors:
                 raise PBDError.hierarchy(e) from e
-        
+
     def _reset(self) -> None:
 
         self._process = None
@@ -388,4 +388,4 @@ class Encoder:
         self._log_id = None
         self._frames = ()
         self._frame_index = 0
-        self._tick_ms = 0        
+        self._tick_ms = 0 

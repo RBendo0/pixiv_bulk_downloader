@@ -372,7 +372,7 @@ class MultiMediaManager:
                             frames,
                             start=1,
                         ):
-                                
+
                             frame_name = str(
                                 frame["file"]
                             )
