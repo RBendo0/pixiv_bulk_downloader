@@ -1,5 +1,5 @@
-import math
 from pathlib import Path
+from typing import Final
 
 from .config import config
 from .const import (
@@ -23,95 +23,50 @@ _BasePath = type(Path())
 
 class PixivPath(_BasePath):
 
-    _GROUP_SIZE = 500
+    _FIRST_LEVEL_BUCKET_COUNT: Final[int] = 256
 
-    _ID_FORK_000 = 125_000_000
-
-    _N_MAX = 39_724
-    _ID_MAX = 145_654_652
-
-    _DENSITY_HYPE_A = 0.16223786
-    _DENSITY_HYPE_B = 1.09912234
-    _DENSITY_HYPE_SCALE = 3.0
-
-    _DENSITY_STABLE = 550
-    _BUCKET_GUARD_BAND = 1000
-    
-    # Il valore di questa variavile è calcolato mediante la formula 
-    #   _HYPE_MAX_BUCKET = MAX(ID_GROUP_HYPE(0), ID_GROUP_HYPE(_ID_FORK_000))
-    # dove ID_GROUP_HYPE() è la formula per calcolare il bucket nell'era hype
-    _HYPE_MAX_BUCKET = 1_563_047
-
-    _BUCKET_STABLE_OFFSET = (_HYPE_MAX_BUCKET + _BUCKET_GUARD_BAND)
-
-    def _density_hype(
-        self,
-        id_: int,
-    ) -> float:
-
-        a = (
-            self._DENSITY_HYPE_A
-            * self._ID_MAX
-        )
-
-        b = (
-            self._DENSITY_HYPE_B
-            * self._ID_MAX
-        )
-
-        return (
-            self._DENSITY_HYPE_SCALE
-            * a
-            / (
-                self._N_MAX
-                * math.exp(
-                    (id_ - b)
-                    / a
-                )
-            )
-        )
-    
+    @staticmethod
     def _get_bucket(
-        self,
         id_: int,
-    ) -> str:
+        bucket_count: int,
+    ) -> int:
 
-        if id_ < self._ID_FORK_000:
+        return id_ % bucket_count
 
-            bucket = int(
-                id_
-                / (
-                    self._GROUP_SIZE
-                    * self._density_hype(id_)
-                )
-            )
-
-            return f"H_{bucket}"
-
-        bucket = int(
-            self._BUCKET_STABLE_OFFSET
-            + (
-                id_
-                / (
-                    self._GROUP_SIZE
-                    * self._DENSITY_STABLE
-                )
-            )
-        )
-
-        return f"S_{bucket}"
-
-    def work_dir(
+    def author_dir(
         self,
         metadata: PixivMetadata,
     ) -> "PixivPath":
 
-        bucket = self._get_bucket(metadata.id)
+        first_bucket = self._get_bucket(
+            metadata.author_id,
+            self._FIRST_LEVEL_BUCKET_COUNT,
+        )
 
-        folder_name = f"{metadata.id}_{metadata.path_title}"
+        author_dirname = (
+            f"{metadata.author_id}_"
+            f"{metadata.author_name(for_path=True)}"
+        )
 
         return PixivPath(
-            self / bucket / folder_name
+            self
+            / str(first_bucket)
+            / author_dirname
+        )
+
+    def artwork_dir(
+        self,
+        metadata: PixivMetadata,
+    ) -> "PixivPath":
+
+        artwork_dirname = (
+            f"{metadata.artw_id}_"
+            f"{metadata.artw_title(for_path=True)}"
+        )
+
+        return PixivPath(
+            self.author_dir(metadata)
+            / artwork_dirname
         )
 
 

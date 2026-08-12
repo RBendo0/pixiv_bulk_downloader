@@ -283,7 +283,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 if image_data.state != "complete":
                     return
 
-                local_ids.add(image_data.id)
+                local_ids.add(image_data.artw_id)
 
                 ui.line(
                     f"[+]: Found @@{len(local_ids)}@@. artworks.",
@@ -349,26 +349,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     res_json.get("next_url"),
                 )
 
-                """
-                test_case = random.randint(1, 10)
-
-                if test_case == 1:
-                    # raise StorageError("Storage test")
-                    pass
-
-                elif test_case == 2:
-                    raise PixivApiError("Pixiv API test")
-
-                elif test_case == 3:
-                    raise RateLimitError("Rate limit test")
-                """
-
             except ApiRateLimitError as e:
 
                 ui.line(
                     f"[!]: {e.report(with_message=False)} | "
                     f"Last artwork: "
-                    f"{urls[-1].id if urls else 'N/A'}",
+                    f"{urls[-1].artw_id if urls else 'N/A'}",
                     ui.COLOR_WARNING,
                 )
 
@@ -391,7 +377,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 ui.line(
                     f"[!]: {e.report(with_message=False)} | "
                     f"Last artwork: "
-                    f"{urls[-1].id if urls else 'N/A'}",
+                    f"{urls[-1].artw_id if urls else 'N/A'}",
                     ui.COLOR_ERROR,
                 )
 
@@ -458,25 +444,42 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     try:
 
-                        image_data: PixivMetadata = PixivMetadata(
+                        artwork_data = PixivMetadata(
                             type="artwork",
                             state="pending",
-                            data=illust,
-                        )                        
+                            data=caapi.illust_detail(
+                                illust.id
+                            ),
+                        )
 
-                        if image_data.is_ugoira:
+                        if artwork_data.has_error:
+                            break
+
+                        if artwork_data.artw_is_ugoira:
 
                             ugoira_data = caapi.ugoira_metadata(
-                                image_data.id
+                                artwork_data.artw_id
                             )
 
-                            image_data.add(
+                            artwork_data.add(
                                 "ugoira",
                                 ugoira_data,
                             )
 
-                        cls.save_metadata(image_data, bookmarks_path)
-                        urls.append(image_data)
+                        author_data = PixivMetadata(
+                            type="author",
+                            data=caapi.user_detail(
+                                artwork_data.author_id
+                            ),
+                        )
+
+                        cls.save_metadata(
+                            bookmarks_path,
+                            artwork_data,
+                            author_data,
+                        )
+
+                        urls.append(artwork_data)
 
                         current = len(urls)
 

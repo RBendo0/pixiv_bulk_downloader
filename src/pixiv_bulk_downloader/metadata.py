@@ -114,60 +114,116 @@ class PixivMetadata:
 
         self._collection["header"]["state"] = value
 
-    @property
-    def id(self) -> int:
-        return self._collection["metadata"]["id"]
+    @staticmethod
+    def _normalize_for_path(
+        value: str,
+    ) -> str:
 
-    @property
-    def title(self) -> str:
-        return self._collection["metadata"]["title"]
-    
-    @property
-    def path_title(self) -> str:
-
-        title = re.sub(
+        value = re.sub(
             r'[\\/:*?"<>|]',
             "_",
-            self.title,
+            value,
         )
 
         # Windows non consente nomi che terminano
         # con spazi o punti.
-        return title.rstrip(" .")    
+        return value.rstrip(" .")
+
+    # -------------------------------------------------------------------------
+    # Common
+    # -------------------------------------------------------------------------
 
     @property
-    def type(self) -> str:
-        return self._collection["metadata"]["type"]
+    def has_error(self) -> bool:
+        return "error" in self._collection["metadata"]
+
+    # -------------------------------------------------------------------------
+    # Artwork
+    # -------------------------------------------------------------------------
 
     @property
-    def is_illust(self) -> bool:
-        return self.type == "illust"
+    def artw_id(self) -> int:
+        return self._collection["metadata"]["illust"]["id"]
+
+    def artw_title(
+        self,
+        for_path: bool = False,
+    ) -> str:
+
+        title = self._collection["metadata"]["illust"]["title"]
+
+        return (
+            self._normalize_for_path(title)
+            if for_path
+            else title
+        )
 
     @property
-    def is_manga(self) -> bool:
-        return self.type == "manga"
+    def artw_type(self) -> str:
+        return self._collection["metadata"]["illust"]["type"]
 
     @property
-    def is_ugoira(self) -> bool:
-        return self.type == "ugoira"
+    def artw_is_illust(self) -> bool:
+        return self.artw_type == "illust"
 
-    def get_links(self) -> list[str]:
+    @property
+    def artw_is_manga(self) -> bool:
+        return self.artw_type == "manga"
+
+    @property
+    def artw_is_ugoira(self) -> bool:
+        return self.artw_type == "ugoira"
+
+    def artw_get_links(self) -> list[str]:
         """
         Restituisce sempre una lista di URL.
         """
 
         links: list[str] = []
 
-        for page in self._collection["metadata"]["meta_pages"]:
-            links.append(page["image_urls"]["original"])
+        for page in self._collection["metadata"]["illust"]["meta_pages"]:
+            links.append(
+                page["image_urls"]["original"]
+            )
 
         if links:
             return links
 
         return [
-            self._collection["metadata"]["meta_single_page"].get(
+            self._collection["metadata"]["illust"]["meta_single_page"].get(
                 "original_image_url",
-                self._collection["metadata"]["image_urls"]["large"],
+                self._collection["metadata"]["illust"]["image_urls"]["large"],
             )
         ]
 
+    # -------------------------------------------------------------------------
+    # Author
+    # -------------------------------------------------------------------------
+
+    @property
+    def _author_data(self) -> JsonDict:
+
+        metadata = self._collection["metadata"]
+
+        return (
+            metadata["illust"]["user"]
+            if self._collection["header"]["type"] == "artwork"
+            else metadata["user"]
+        )
+
+    @property
+    def author_id(self) -> int:
+        return self._author_data["id"]
+
+    def author_name(
+        self,
+        for_path: bool = False,
+    ) -> str:
+
+        name = self._author_data["name"]
+
+        return (
+            self._normalize_for_path(name)
+            if for_path
+            else name
+        )

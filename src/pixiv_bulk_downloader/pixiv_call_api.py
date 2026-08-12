@@ -118,6 +118,10 @@ class CallAAPI:
         return cls.call_api(cls._aapi().user_bookmarks_illust, *args, **kwargs)
 
     @classmethod
+    def illust_detail(cls, *args, **kwargs):
+        return cls.call_api(cls._aapi().illust_detail, *args, **kwargs)
+
+    @classmethod
     def ugoira_metadata(cls, *args, **kwargs):
         return cls.call_api(cls._aapi().ugoira_metadata, *args, **kwargs)
 

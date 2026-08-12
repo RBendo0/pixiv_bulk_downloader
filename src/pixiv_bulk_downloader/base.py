@@ -8,6 +8,7 @@ from typing import TypeVar
 from .animation import m3
 from .const import (
     ARTWORK_METADATA_FILE,
+    AUTHOR_METADATA_FILE,
     UGOIRA_ZIP_FILE,
 )
 from .errors import (
@@ -56,7 +57,7 @@ class PixivBaseDownloader:
 
         w_dir = (
             PixivPath(save_path)
-            .work_dir(metadata)
+            .artwork_dir(metadata)
         )
 
         w_dir.mkdir(
@@ -83,7 +84,7 @@ class PixivBaseDownloader:
             image_data,
         )
 
-        if image_data.is_ugoira:
+        if image_data.artw_is_ugoira:
 
             ugoira_data = image_data.get("ugoira")
             zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
@@ -92,7 +93,7 @@ class PixivBaseDownloader:
 
         else:
 
-            links = image_data.get_links()
+            links = image_data.artw_get_links()
 
         overflow = ui.Renderer.in_thread_overflow_width(
             progress, 
@@ -140,7 +141,7 @@ class PixivBaseDownloader:
 
             fname = (
                 UGOIRA_ZIP_FILE.name
-                if image_data.is_ugoira
+                if image_data.artw_is_ugoira
                 else basename.split("_")[-1]
             )
             
@@ -220,12 +221,12 @@ class PixivBaseDownloader:
                     fname=fname,
                 )                            
 
-                if metadata.is_ugoira:
+                if metadata.artw_is_ugoira:
 
                     frames = metadata.get("ugoira")["ugoira_metadata"]["frames"]
 
                     return m3.build_animation(
-                        metadata.id,
+                        metadata.artw_id,
                         progress=progress,
                         zip_path=work_dir / fname,
                         frames=frames,
@@ -267,7 +268,7 @@ class PixivBaseDownloader:
 
                 e.notify(
                     f"Failed to build animation | "
-                    f"Artwork: <ID:{metadata.id}> "
+                    f"Artwork: <ID:{metadata.artw_id}> "
                     f"(checkpoint preserved)",
                     with_report=True,
                 )
@@ -299,7 +300,7 @@ class PixivBaseDownloader:
 
                 e.notify(
                     f"Failed to download media | "
-                    f"Artwork: <ID:{metadata.id}> "
+                    f"Artwork: <ID:{metadata.artw_id}> "
                     f"(checkpoint preserved)",
                     with_report=True,
                 )
@@ -361,8 +362,8 @@ class PixivBaseDownloader:
                 f"[{idx + 1:0{d_width}d}/"
                 f"{data_len:0{d_width}d}]: "
                 f"{ui.COLOR_INFO}"
-                f"<ID:{image_data.id}> "
-                f"{image_data.title}"
+                f"<ID:{image_data.artw_id}> "
+                f"{image_data.artw_title()}"
                 f"{ui.COLOR_DEFAULT}"
             )
 
@@ -432,21 +433,40 @@ class PixivBaseDownloader:
     @classmethod
     def save_metadata(
         cls,
-        image_data: PixivMetadata,
         save_path: Path,
+        image_data: PixivMetadata,
+        author_data: PixivMetadata | None = None,
     ) -> None:
 
-        # Crea la cartella definitiva dell'opera.
-        work_dir = cls.work_dir(
-            save_path,
-            image_data,
+        path = PixivPath(save_path)
+
+        # Risolve e crea la directory dell'opera.
+        artwork_dir = path.artwork_dir(
+            image_data
         )
 
-        # Crea percorso file metadata.
-        metadata_file = work_dir / ARTWORK_METADATA_FILE
+        artwork_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        # Salva il metadata dell'opera nello stato corrente.
-        image_data.save(metadata_file)
+        # Salva il metadata dell'opera.
+        image_data.save(
+            artwork_dir
+            / ARTWORK_METADATA_FILE
+        )
+
+        # Il metadata autore è opzionale.
+        if author_data is not None:
+
+            author_dir = path.author_dir(
+                image_data
+            )
+
+            author_data.save(
+                author_dir
+                / AUTHOR_METADATA_FILE
+            )
 
     @classmethod
     def scan_archive(
@@ -533,7 +553,7 @@ class PixivBaseDownloader:
 
             return
 
-        pending.sort(key=lambda x: x.id)
+        pending.sort(key=lambda x: x.artw_id)
 
         ui.line(
             f"[+]: Found @@{len(pending)}@@. pending jobs.",
