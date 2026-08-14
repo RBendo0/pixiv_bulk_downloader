@@ -594,15 +594,22 @@ class UI:
         default: str = KEY_ENTER,
     ) -> bool:
 
+        confirm_key = cls._key_name(valid[0])
+        cancel_key = cls._key_name(valid[1])
+
         choice = cls.input_key(
-            prompt=f"[?]: {prompt} (@@ENTER@@.=Confirm / @@ESC@@.=Cancel):",
+            prompt=(
+                f"[?]: {prompt} "
+                f"(@@{confirm_key}@@.=Confirm / "
+                f"@@{cancel_key}@@.=Cancel):"
+            ),
             valid=valid,
             default=default,
         )
 
         cls.clear_lines(1)
 
-        return choice == default
+        return choice == valid[0]
 
     @classmethod
     def poll_key(

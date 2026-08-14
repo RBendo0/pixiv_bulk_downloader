@@ -285,7 +285,7 @@ class Config:
                 )
 
                 if (
-                    not ui.confirm(
+                    ui.confirm(
                         "Press ESC to skip this step",
                         default=ui.KEY_ESCAPE,
                     )

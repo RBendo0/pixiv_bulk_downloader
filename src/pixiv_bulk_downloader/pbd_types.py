@@ -20,6 +20,18 @@ MetadataState = Literal[
 ]
 
 
+MetadataPayload = Literal[
+    "illust",
+    "author",
+    "ugoira",
+]
+
+
+class MetadataVersionDescriptor(TypedDict):
+    LAST: int
+    CURRENT: int
+
+
 class CommandLineOptions(TypedDict):
     root: Path | None
 
@@ -45,6 +57,7 @@ BookmarkPrivacy = Literal[
 class BookmarkOptions(TypedDict):
     mode: BookmarkMode
     restrict: BookmarkPrivacy
+    author_metadata: bool
 
 
 class AddListOptions(TypedDict):

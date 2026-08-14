@@ -1,20 +1,85 @@
 from __future__ import annotations
 
 import re
+from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
 from pixivpy3.utils import JsonDict
 
+from .const import (
+    ARTWORK_METADATA_VERSION,
+    AUTHOR_METADATA_VERSION,
+)
 from .iofile import JsonFile
 from .pbd_types import (
     JsonCollection,
+    MetadataPayload,
     MetadataState,
     MetadataType,
 )
 
 
-class PixivMetadata:
+class PixivMetadata(ABC):
+
+    _VERSION_CLASSES: dict[
+        MetadataType,
+        dict[int, type["PixivMetadata"]],
+    ] = {}
+
+    def __new__(
+        cls,
+        *,
+        type: MetadataType,
+        state: MetadataState = "",
+        data: JsonDict | None = None,
+    ) -> PixivMetadata:
+
+        if cls is PixivMetadata:
+
+            version = (
+                ARTWORK_METADATA_VERSION["CURRENT"]
+                if type == "artwork"
+                else AUTHOR_METADATA_VERSION["CURRENT"]
+            )
+
+            version_class = cls._get_version_class(
+                type,
+                version,
+            )
+
+            return object.__new__(
+                version_class
+            )
+
+        return object.__new__(cls)
+
+    @classmethod
+    def _get_version_class(
+        cls,
+        type: MetadataType,
+        version: int,
+    ) -> type[PixivMetadata]:
+
+        type_versions = cls._VERSION_CLASSES.get(
+            type
+        )
+
+        if type_versions is None:
+            raise KeyError(
+                f"Unsupported metadata type: {type}"
+            )
+
+        version_class = type_versions.get(
+            version
+        )
+
+        if version_class is None:
+            raise KeyError(
+                f"Unsupported {type} metadata version: {version}"
+            )
+
+        return version_class
 
     def __init__(
         self,
@@ -24,16 +89,33 @@ class PixivMetadata:
         data: JsonDict | None = None,
     ) -> None:
 
+        version = (
+            ARTWORK_METADATA_VERSION["CURRENT"]
+            if type == "artwork"
+            else AUTHOR_METADATA_VERSION["CURRENT"]
+        )
+
         self._collection: JsonCollection = {
             "header": {
                 "type": type,
-                "state": state,
+                "version": version,
                 "timestamp": "",
+                "state": state,
             }
         }
 
         if data is not None:
-            self._collection["metadata"] = data
+
+            payload: MetadataPayload = (
+                "illust"
+                if type == "artwork"
+                else "author"
+            )
+
+            self.add(
+                payload=payload,
+                data=data,
+            )
 
     def from_json(
         self,
@@ -44,18 +126,25 @@ class PixivMetadata:
 
     def add(
         self,
-        name: str,
+        *,
+        payload: MetadataPayload,
         data: JsonDict,
     ) -> None:
 
-        self._collection[name] = data
+        match payload:
 
-    def get(
-        self,
-        name: str,
-    ) -> JsonDict:
+            case "illust":
+                formatted_data = self.type_illust(data)
 
-        return self._collection[name]
+            case "author":
+                formatted_data = self.type_author(data)
+
+            case "ugoira":
+                formatted_data = self.type_ugoira(data)
+
+        self._collection.update(
+            formatted_data
+        )
 
     def to_dict(
         self,
@@ -86,21 +175,26 @@ class PixivMetadata:
 
         collection = JsonFile(path).load()
 
-        obj = cls(
-            type=collection["header"]["type"],
-            state=collection["header"]["state"],
+        version_class = cls._get_version_class(
+            collection["header"]["type"],
+            collection["header"]["version"],
+        )
+
+        obj = object.__new__(
+            version_class
         )
 
         obj._collection = collection
 
         return obj
 
-    def load(
-        self,
-        path: Path,
-    ) -> None:
+    @property
+    def version(self) -> int:
+        return self._collection["header"]["version"]
 
-        self._collection = JsonFile(path).load()
+    @property
+    def type(self) -> MetadataType:
+        return self._collection["header"]["type"]
 
     @property
     def state(self) -> MetadataState:
@@ -138,8 +232,125 @@ class PixivMetadata:
         return "error" in self._collection["metadata"]
 
     # -------------------------------------------------------------------------
+    # Formatter
+    # -------------------------------------------------------------------------
+
+    @abstractmethod
+    def type_illust(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+        ...
+
+    @abstractmethod
+    def type_author(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+        ...
+
+    @abstractmethod
+    def type_ugoira(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+        ...
+
+    # -------------------------------------------------------------------------
     # Artwork
     # -------------------------------------------------------------------------
+
+    @property
+    @abstractmethod
+    def artw_id(self) -> int:
+        ...
+
+    @abstractmethod
+    def artw_title(
+        self,
+        for_path: bool = False,
+    ) -> str:
+        ...
+
+    @property
+    @abstractmethod
+    def artw_type(self) -> str:
+        ...
+
+    @property
+    @abstractmethod
+    def artw_is_illust(self) -> bool:
+        ...
+
+    @property
+    @abstractmethod
+    def artw_is_manga(self) -> bool:
+        ...
+
+    @property
+    @abstractmethod
+    def artw_is_ugoira(self) -> bool:
+        ...
+
+    @abstractmethod
+    def artw_get_links(self) -> list[str]:
+        ...
+
+    @abstractmethod
+    def ugoira_zip_url(self) -> str:
+        ...
+
+    @abstractmethod
+    def ugoira_frames(self) -> list[JsonDict]:
+        ...        
+
+    # -------------------------------------------------------------------------
+    # Author
+    # -------------------------------------------------------------------------
+
+    @property
+    @abstractmethod
+    def author_id(self) -> int:
+        ...
+
+    @abstractmethod
+    def author_name(
+        self,
+        for_path: bool = False,
+    ) -> str:
+        ...
+
+
+class PixivMetadataV1(PixivMetadata):
+
+    def type_illust(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+
+        return {    # pyright: ignore[reportReturnType]
+            "metadata": {
+                "illust": data,
+            }
+        }
+
+    def type_author(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+
+        return {    # pyright: ignore[reportReturnType]
+            "metadata": data,
+        }
+
+    def type_ugoira(
+        self,
+        data: JsonDict,
+    ) -> JsonDict:
+
+        return {    # pyright: ignore[reportReturnType]
+            "ugoira": data,
+        }
 
     @property
     def artw_id(self) -> int:
@@ -175,9 +386,6 @@ class PixivMetadata:
         return self.artw_type == "ugoira"
 
     def artw_get_links(self) -> list[str]:
-        """
-        Restituisce sempre una lista di URL.
-        """
 
         links: list[str] = []
 
@@ -196,9 +404,25 @@ class PixivMetadata:
             )
         ]
 
-    # -------------------------------------------------------------------------
-    # Author
-    # -------------------------------------------------------------------------
+    def ugoira_zip_url(self) -> str:
+        return self._collection[
+            "ugoira"
+        ][
+            "ugoira_metadata"
+        ][
+            "zip_urls"
+        ][
+            "medium"
+        ]
+
+    def ugoira_frames(self) -> list[JsonDict]:
+        return self._collection[
+            "ugoira"
+        ][
+            "ugoira_metadata"
+        ][
+            "frames"
+        ]
 
     @property
     def _author_data(self) -> JsonDict:
@@ -227,3 +451,13 @@ class PixivMetadata:
             if for_path
             else name
         )
+
+
+PixivMetadata._VERSION_CLASSES = {
+    "artwork": {
+        1: PixivMetadataV1,
+    },
+    "author": {
+        1: PixivMetadataV1,
+    },
+}

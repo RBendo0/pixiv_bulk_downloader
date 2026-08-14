@@ -2,7 +2,11 @@ import sys
 from pathlib import Path
 from typing import Final
 
-from .pbd_types import CodecSettings, PreferredMediaFormats
+from .pbd_types import (
+    CodecSettings,
+    MetadataVersionDescriptor,
+    PreferredMediaFormats,
+)
 
 # ROOT DI DEFAULT: necessaria per archiviare le impostazioni dell'applicazione
 # viene determinata dalla posizione dell'eseguibile compilato con PyInstaller
@@ -81,3 +85,12 @@ UGOIRA_ZIP_FILE: Final[Path] = Path("ugoira.zip")
 ARTWORK_METADATA_FILE = Path("artwork.metadata.json")
 AUTHOR_METADATA_FILE = Path("author.metadata.json")
 
+ARTWORK_METADATA_VERSION: Final[MetadataVersionDescriptor] = {
+    "LAST": 1,
+    "CURRENT": 1,
+}
+
+AUTHOR_METADATA_VERSION: Final[MetadataVersionDescriptor] = {
+    "LAST": 1,
+    "CURRENT": 1,
+}

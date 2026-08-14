@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from pixivpy3.utils import JsonDict
@@ -83,9 +84,16 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if c2 == ui.KEY_ESCAPE:
             return None
 
+        author_metadata = ui.confirm(
+            prompt="Scaricare metadata autore",
+            valid="YN",
+            default="N",
+        )        
+
         return {
             "mode": mode_map[c1],
             "restrict": privacy_map[c2],
+            "author_metadata": author_metadata,
         }
 
     @classmethod
@@ -223,6 +231,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         bookmarks_path: Path,
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
+        author_metadata: bool = False,
     ) -> list[PixivMetadata] | None:
 
         urls: list[PixivMetadata] = []
@@ -262,17 +271,17 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     ui.COLOR_WARNING,
                 )
 
-        # Lista ID delle opere già scaricate completamente
-        local_ids: set[int] = set()
+        # Lista ID delle opere e degli autori già presenti nell'archivio locale
+        local = SimpleNamespace(
+            work_ids=set(),
+            user_ids=set(),
+        )
         local_total: int = 0
 
         def check_for_artworks(
-            local_ids: set[int],
-            metadata_file: Path | None = None,
+            local: SimpleNamespace,
+            metadata_file: Path,
         ) -> None:
-
-            if metadata_file is None:
-                return
 
             try:
 
@@ -280,13 +289,18 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     metadata_file
                 )
 
+                if image_data.type != "artwork":
+                    return
+
                 if image_data.state != "complete":
                     return
 
-                local_ids.add(image_data.artw_id)
+                local.work_ids.add(image_data.artw_id)
+
+                local.user_ids.add(image_data.author_id)
 
                 ui.line(
-                    f"[+]: Found @@{len(local_ids)}@@. artworks.",
+                    f"[+]: Found @@{len(local.work_ids)}@@. artworks.",
                     tag_color=ui.COLOR_INFO,
                     history=False,
                 )
@@ -300,8 +314,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             cls.scan_archive(
                 bookmarks_path, 
-                shared_context=local_ids, 
-                run_for_each_folder=check_for_artworks
+                shared_context=local, 
+                run_for_each_metadata=check_for_artworks
             )
 
             ui.line(
@@ -309,8 +323,8 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 clear=False,
             )
 
-            local_total = len(local_ids)
-
+            local_total = len(local.work_ids)
+            
         # ATTENZIONE:
         # default_abort è persistente.
         # Chiamare sempre reset() prima del primo utilizzo.
@@ -417,7 +431,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     cls.default_abort.set_notified()
 
                 # Opera già presente nel database locale
-                if illust.id in local_ids:
+                if illust.id in local.work_ids:
 
                     # Modalità Missing, se l'ID corrente è presente in locale salta il ciclo
                     if mode == "missing":
@@ -444,12 +458,10 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     try:
 
-                        artwork_data = PixivMetadata(
+                        artwork_data = PixivMetadata(   # pyright: ignore[reportAbstractUsage]
                             type="artwork",
                             state="pending",
-                            data=caapi.illust_detail(
-                                illust.id
-                            ),
+                            data=illust,
                         )
 
                         if artwork_data.has_error:
@@ -462,16 +474,27 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                             )
 
                             artwork_data.add(
-                                "ugoira",
-                                ugoira_data,
+                                payload="ugoira",
+                                data=ugoira_data,
                             )
 
-                        author_data = PixivMetadata(
-                            type="author",
-                            data=caapi.user_detail(
+                        author_data: PixivMetadata | None = None
+
+                        if (
+                            author_metadata
+                            and artwork_data.author_id not in local.user_ids
+                        ):
+
+                            author_data = PixivMetadata(  # pyright: ignore[reportAbstractUsage]
+                                type="author",
+                                data=caapi.user_detail(
+                                    artwork_data.author_id
+                                ),
+                            )
+
+                            local.user_ids.add(
                                 artwork_data.author_id
-                            ),
-                        )
+                            )
 
                         cls.save_metadata(
                             bookmarks_path,

@@ -86,10 +86,7 @@ class PixivBaseDownloader:
 
         if image_data.artw_is_ugoira:
 
-            ugoira_data = image_data.get("ugoira")
-            zip_url = ugoira_data["ugoira_metadata"]["zip_urls"]["medium"]
-
-            links = [zip_url]
+            links = [image_data.ugoira_zip_url()]
 
         else:
 
@@ -223,13 +220,11 @@ class PixivBaseDownloader:
 
                 if metadata.artw_is_ugoira:
 
-                    frames = metadata.get("ugoira")["ugoira_metadata"]["frames"]
-
                     return m3.build_animation(
                         metadata.artw_id,
                         progress=progress,
                         zip_path=work_dir / fname,
-                        frames=frames,
+                        frames=metadata.ugoira_frames(),
                     )
 
                 return True
@@ -474,26 +469,36 @@ class PixivBaseDownloader:
         save_path: Path,
         *,
         shared_context: T,
-        run_for_each_folder: Callable[
-            [T, Path | None],
+        run_for_each_metadata: Callable[
+            [T, Path],
             None,
         ],
     ) -> None:
+
+        metadata_files = (
+            ARTWORK_METADATA_FILE,
+            AUTHOR_METADATA_FILE,
+        )
 
         for folder in save_path.rglob("*"):
 
             if not folder.is_dir():
                 continue
 
-            metadata_file = (
-                folder
-                / ARTWORK_METADATA_FILE
-            )
+            for metadata_name in metadata_files:
 
-            run_for_each_folder(
-                shared_context,
-                metadata_file if metadata_file.exists() else None,
-            )
+                metadata_file = (
+                    folder
+                    / metadata_name
+                )
+
+                if not metadata_file.exists():
+                    continue
+
+                run_for_each_metadata(
+                    shared_context,
+                    metadata_file,
+                )
 
     @classmethod
     def resume_pending_jobs(
@@ -507,17 +512,17 @@ class PixivBaseDownloader:
 
         def check_for_pending(
             data: list[PixivMetadata],
-            metadata_file: Path | None = None,
+            metadata_file: Path,
         ) -> None:
-
-            if metadata_file is None:
-                return
 
             try:
 
                 image_data = PixivMetadata.from_file(
                     metadata_file
                 )
+
+                if image_data.type != "artwork":
+                    return
 
                 if image_data.state != "pending":
                     return
@@ -544,7 +549,7 @@ class PixivBaseDownloader:
         cls.scan_archive(
             save_path,
             shared_context=pending,
-            run_for_each_folder=check_for_pending,
+            run_for_each_metadata=check_for_pending,
         )
 
         if not pending:
