@@ -1,1 +1,0 @@
-pyinstaller --clean --noconfirm --distpath C:\Users\pc\pbd\bin --workpath build pbd.spec

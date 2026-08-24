@@ -716,6 +716,8 @@ class UI:
         _thread_slots: dict[int, int] = {}
         _slots: list[str] = [""]
 
+        _started_at: float | None = None
+
         @classmethod
         def _terminal_width(cls) -> int:
 
@@ -754,6 +756,8 @@ class UI:
                 if cls._thread is not None:
                     return
 
+                cls._started_at = time.monotonic()
+
                 cls._thread = Thread(
                     target=cls.render_loop,
                     name="PBD-UI-Renderer",
@@ -779,8 +783,11 @@ class UI:
 
             with UI._console_lock:
 
-                lines = len(cls._slots)
+                # + 1 serve perchè il renderer aggiunge in fondo alla
+                # lista la riga di stato che traccia il tempo trascorso
+                lines = len(cls._slots) + 1 
 
+                """
                 for idx in range(lines):
 
                     print("\r\033[K", end="", flush=True)
@@ -793,13 +800,23 @@ class UI:
                         f"\033[{lines - 1}A\r",
                         end="",
                         flush=True,
-                    )            
+                    )        
+                """
+
+                print(
+                    "\r\033[K\033[B" * (lines - 1)
+                    + "\r\033[K"
+                    + f"\033[{lines - 1}A\r",
+                    end="",
+                    flush=True,
+                )
 
             with cls._lock:
 
                 cls._thread = None
                 cls._thread_slots.clear()
                 cls._slots = [""]
+                cls._started_at = None
                 cls._stop_event.clear()
                 cls._update_event.clear()
 
@@ -999,6 +1016,29 @@ class UI:
 
             cls.in_thread_write("", main=main)
 
+        @classmethod
+        def _elapsed_time(cls) -> float:
+            if cls._started_at is None:
+                return 0.0
+
+            return time.monotonic() - cls._started_at     
+
+        @classmethod
+        def _status(cls) -> str:
+            elapsed = int(cls._elapsed_time())
+
+            hours, remainder = divmod(elapsed, 3600)
+            minutes, seconds = divmod(remainder, 60)
+
+            return (
+                f"{UI.COLOR_DEFAULT}"
+                f"[+].{{STATUS}}: "
+                f"Elapsed {UI.COLOR_INFO}{hours:02d}"
+                f"{UI.COLOR_DEFAULT}:{UI.COLOR_INFO}{minutes:02d}"
+                f"{UI.COLOR_DEFAULT}:{UI.COLOR_INFO}{seconds:02d}"
+                f"{UI.COLOR_RESET}"
+            )               
+
         # Entry point del thread renderer.
         @classmethod
         def render_loop(cls) -> None:
@@ -1024,6 +1064,8 @@ class UI:
         ) -> None:
 
             with UI._console_lock:
+
+                slots.append(cls._status())
 
                 panel = "\n".join(slots) + "\n"
 

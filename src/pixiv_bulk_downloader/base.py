@@ -67,6 +67,38 @@ class PixivBaseDownloader:
 
         return w_dir
 
+    @staticmethod
+    def _media_stats(
+        save_path: Path,
+    ) -> tuple[int, int]:
+
+        files = 0
+        size = 0
+
+        for path in save_path.rglob("*"):
+
+            if path.is_file() and path.suffix.lower() != ".json":
+                files += 1
+                size += path.stat().st_size
+
+        return files, size
+
+    @staticmethod
+    def _format_size(
+        size: int,
+    ) -> str:
+
+        if size >= 1024 ** 3:
+            return f"@@{size / 1024 ** 3:.2f}@@. GiB"
+
+        if size >= 1024 ** 2:
+            return f"@@{size / 1024 ** 2:.2f}@@. MiB"
+
+        if size >= 1024:
+            return f"@@{size / 1024:.2f}@@. KiB"
+
+        return f"@@{size}@@. B"
+
     @classmethod
     def _download_artwork(
         cls,
@@ -346,6 +378,15 @@ class PixivBaseDownloader:
         data_len = len(data)
         d_width = len(str(data_len))
 
+        media_count, media_size = cls._media_stats(save_path)
+
+        stats = {
+            "artworks_detected": data_len,
+            "artworks_processed": 0,
+            "media_count": media_count,
+            "media_size": media_size,
+        }
+
         submit_failed = False
 
         for idx, image_data in enumerate(data):
@@ -370,6 +411,8 @@ class PixivBaseDownloader:
                     image_data,
                     save_path,
                 )
+
+                stats["artworks_processed"] += 1
 
             except Exception as e:
 
@@ -405,6 +448,11 @@ class PixivBaseDownloader:
         # Ferma il thread del renderer e ripulisce il pannello.
         ui.Renderer.stop()
 
+        media_count, media_size = cls._media_stats(save_path)
+
+        stats["media_count"] = media_count - stats["media_count"]
+        stats["media_size"] = media_size - stats["media_size"]
+
         if submit_failed:
 
             ui.line(
@@ -421,6 +469,32 @@ class PixivBaseDownloader:
         else:
 
             ui.line("[+]: Download completed.")
+
+        # Statistiche finali
+
+        ui.line(
+            f"[+]: Artworks detected: "
+            f"@@{stats['artworks_detected']}@@.",
+            tag_color=ui.COLOR_INFO,
+        )
+
+        ui.line(
+            f"[+]: Artworks processed: "
+            f"@@{stats['artworks_processed']}@@.",
+            tag_color=ui.COLOR_INFO,
+        )
+
+        ui.line(
+            f"[+]: Media added: "
+            f"@@{stats['media_count']}@@.",
+            tag_color=ui.COLOR_INFO,
+        )
+
+        ui.line(
+            f"[+]: Media size: "
+            f"{cls._format_size(stats['media_size'])}",
+            tag_color=ui.COLOR_INFO,
+        )
 
         # Reset finale consigliato ma non obbligatorio.
         cls.default_abort.reset()            
