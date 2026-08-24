@@ -94,7 +94,17 @@ def _main() -> None:
             "[+]: Initialisation Begin. "
         )
 
+        ui.line(
+            "[+]: Login...",
+            history=False,
+        )
+
         caapi.open_session()
+
+        ui.line(
+            "[+]: Login...OK!",
+        )
+
         sd.init(options["root"])
         m3.init()
 
@@ -116,21 +126,18 @@ def main() -> None:
 
         _main()
 
-    except PBDError as e:
-        ui.line(
-            f"[!]: Fatal error: {e.report()}",
-            ui.COLOR_ERROR,
+    except LoginFailedError as e:
+
+        e.notify(
+            "Authentication failed",
+            with_report=True,
         )
 
-    except (KeyError, LoginFailedError) as e:
-        # TODO: LoginFailedError è un refuso della vecchia applicazione.
-        # Non veniva lanciato da nessuna parte. Attualmente è ridefinito
-        # in errors.py come sottoclasse di ApiError.
-        # Verrà rivisto durante il refactoring di MyGPPT e del login.
+    except PBDError as e:
 
-        ui.line(
-            f"[!]: {type(e).__name__}: {e}",
-            ui.COLOR_ERROR,
+        e.notify(
+            "Fatal error",
+            with_report=True,
         )
 
     except KeyboardInterrupt:
@@ -139,10 +146,6 @@ def main() -> None:
             "[!]: Process terminated by user. ",
             ui.COLOR_ERROR,
         )
-
-    finally:
-        
-        print("\x1b[?25h", end="")
 
 
 if __name__ == "__main__":

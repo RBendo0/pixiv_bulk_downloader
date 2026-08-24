@@ -17,6 +17,17 @@ DEFAULT_ROOT: Final[Path] = (
     else Path.home() / "pbd"
 )
 
+BROWSER_DIR: Final[Path] = Path("browser")
+
+CHROME_PROFILE_DIR: Final[Path] = (
+    DEFAULT_ROOT
+    / BROWSER_DIR
+    / "chrome"
+    / "profile"
+)
+
+PROFILE_DIR: Final[Path] = CHROME_PROFILE_DIR
+
 TOOLS_DIR: Final[Path] = Path("tools")
 
 FFMPEG_EXECUTABLE: Final[Path] = (

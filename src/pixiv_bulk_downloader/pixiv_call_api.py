@@ -13,9 +13,10 @@ from .errors import (
     ApiError,
     ApiRateLimitError,
     DownloadRateLimitError,
+    LoginFailedError,
     PageNotFoundError,
 )
-from .my_gppt import LoginInfo, PixivAuth
+from .login import PixivLogin
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -24,7 +25,6 @@ R = TypeVar("R")
 class CallAAPI:
 
     aapi: AppPixivAPI | None = None
-    login_info: LoginInfo | None = None
 
     @classmethod
     def _aapi(cls) -> AppPixivAPI:
@@ -32,7 +32,12 @@ class CallAAPI:
 
     @classmethod
     def open_session(cls) -> None:
-        cls.aapi, cls.login_info = cls.auth(PixivAuth())
+
+        try:
+            cls.aapi = PixivLogin().login()
+
+        except Exception as e:
+            raise LoginFailedError(str(e)) from e
 
     @classmethod
     def call_api(
@@ -89,6 +94,7 @@ class CallAAPI:
 
             raise ApiError(str(e)) from e
 
+    """
     @classmethod
     def call_auth_api(cls, func, *args, **kwargs):
         return func(*args, **kwargs)
@@ -100,7 +106,7 @@ class CallAAPI:
     @classmethod
     def refresh(cls, token_provider, *args, **kwargs):
         return cls.call_auth_api(token_provider.refresh, *args, **kwargs)
-
+    """
     @classmethod
     def parse_qs(cls, *args, **kwargs):
         return cls._aapi().parse_qs(*args, **kwargs)
