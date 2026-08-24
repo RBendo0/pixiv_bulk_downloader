@@ -161,7 +161,8 @@ class PBDError(Exception):
 
             ui.line(
                 f"[!]: {message}",
-                ui.COLOR_ERROR
+                ui.COLOR_ERROR,
+                tag_color=ui.COLOR_WARNING,
             )
 
             if with_report:

@@ -161,14 +161,9 @@ class StorageDirs:
 
             except (FileError, InvalidDataFormatError) as e:
 
-                ui.line(
-                    "[!]: Failed to load storage path.",
-                    ui.COLOR_ERROR,
-                )
-
-                ui.line(
-                    f"     {e.report()}",
-                    ui.COLOR_ERROR,
+                e.notify(
+                    "Failed to load storage path.",
+                    with_report=True,
                 )
 
                 ui.line(
@@ -260,10 +255,9 @@ class StorageDirs:
 
             except FileOperationError as e:
 
-                ui.line(
-                    f"[!]: Failed to set storage path: "
-                    f"{e.report()}",
-                    ui.COLOR_ERROR,
+                e.notify(
+                    "Failed to set storage path.",
+                    with_report=True,
                 )
 
                 cls._show_current_storage_root()
@@ -286,14 +280,9 @@ class StorageDirs:
 
         except FileOperationError as e:
 
-            ui.line(
-                "[!]: Path init failed: ",
-                ui.COLOR_ERROR,
-            )
-
-            ui.line(
-                f"    {e.report()}",
-                ui.COLOR_ERROR,
+            e.notify(
+                "Path init failed.",
+                with_report=True,
             )
 
     @classmethod

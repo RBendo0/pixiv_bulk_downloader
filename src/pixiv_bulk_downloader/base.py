@@ -321,7 +321,7 @@ class PixivBaseDownloader:
 
                 return False
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
 
                 e = PBDError.hierarchy(e)
 
@@ -414,21 +414,15 @@ class PixivBaseDownloader:
 
                 stats["artworks_processed"] += 1
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
 
                 e = PBDError.cast(e)
 
-                ui.line(
-                    f"[!]: {progress} | ",
-                    history=False,
-                )
-
-                ui.line(
+                e.notify(
                     f"Failed to submit artwork: "
-                    f"{e.report()}",
-                    ui.COLOR_ERROR,
-                    home=False,
-                    clear=False,
+                    f"<ID:@@{image_data.artw_id}@@.> "
+                    f"{image_data.artw_title()}",
+                    with_report=True,
                 )
 
                 ui.line(
@@ -609,15 +603,14 @@ class PixivBaseDownloader:
                     history=False,
                 )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
 
                 e = PBDError.cast(e)
 
-                ui.line(
-                    f"[!]: Failed to load job: "
-                    f"{metadata_file.parent.name}: "
-                    f"{e.report()}",
-                    ui.COLOR_ERROR,
+                e.notify(
+                    f"Failed to load job: "
+                    f"@@{metadata_file.parent.name}@@.",
+                    with_report=True,
                 )
 
         cls.scan_archive(

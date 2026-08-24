@@ -144,7 +144,7 @@ def main() -> None:
 
         ui.line(
             "[!]: Process terminated by user. ",
-            ui.COLOR_ERROR,
+            ui.COLOR_WARNING,
         )
 
 

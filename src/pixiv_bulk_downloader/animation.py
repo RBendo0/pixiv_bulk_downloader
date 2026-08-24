@@ -67,14 +67,9 @@ class MultiMediaManager:
 
         except (FileError, InvalidDataFormatError) as e:
 
-            ui.line(
-                "[!]: Failed to load preferences about media formats.",
-                ui.COLOR_ERROR,
-            )
-
-            ui.line(
-                f"     {e.report()}",
-                ui.COLOR_ERROR,
+            e.notify(
+                "Failed to load preferences about media formats.",
+                with_report=True,
             )
 
             ui.line(
@@ -107,16 +102,10 @@ class MultiMediaManager:
 
         except (FileError, InvalidDataFormatError) as e:
 
-            ui.line(
-                f"[!]: Failed to load [@@{key}@@.], "
-                " codec will be set to default.",
-                ui.COLOR_WARNING,
-                tag_color=ui.COLOR_ERROR,
-            )
-
-            ui.line(
-                f"     {e.report()}",
-                ui.COLOR_ERROR,
+            e.notify(
+                f"Failed to load [@@{key}@@.], "
+                "codec will be set to default.",
+                with_report=True,
             )
 
         return None
@@ -401,7 +390,7 @@ class MultiMediaManager:
 
                         encoder.stop()
 
-                    except Exception as error:
+                    except Exception as error:  # noqa: BLE001
 
                         # Se l'errore è avvenuto fuori da Encoder.add(),
                         # per esempio durante la lettura dello ZIP, assicura
