@@ -261,14 +261,13 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 # Numero di opere totali marcate come preferite
                 d_width = len(str(online_total))
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
 
                 e = PBDError.hierarchy(e)
 
-                ui.line(
-                    f"[!]: Failed to obtain total public artwork count: "
-                    f"{e.report()}",
-                    ui.COLOR_WARNING,
+                e.notify(
+                    "@@Failed to obtain total public artwork count:@@.",
+                    with_report=True,
                 )
 
         # Lista ID delle opere e degli autori già presenti nell'archivio locale
@@ -305,7 +304,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     history=False,
                 )
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return
 
         if mode in ("missing", "chrono"):
@@ -344,6 +343,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
             try:
 
+                ui.line(
+                    "[+]: Retrieving new page",
+                    history=False,
+                )                
+
                 # Legge l'intera pagina di bookmarks, a seconda se è la prima o una successiva
                 if "user_id" not in next_qs:
 
@@ -363,16 +367,11 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     res_json.get("next_url"),
                 )
 
-            except ApiRateLimitError as e:
+            except ApiRateLimitError:
 
-                ui.line(
-                    f"[!]: {e.report(with_message=False)} | "
-                    f"Last artwork: "
-                    f"{urls[-1].artw_id if urls else 'N/A'}",
-                    ui.COLOR_WARNING,
-                )
-
-                if rcc.wait_rate_limit() == rcc.Action.ABORT: 
+                if rcc.wait_rate_limit(
+                    "[!]: Retrieving new page"
+                ) == rcc.Action.ABORT: 
 
                     ui.line(
                         "[!]: Operation interrupted by user.",
@@ -380,19 +379,13 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                     break
 
-                ui.line(
-                    "[i]: Access limited by the service. Retrying in a moment."
-                )                    
-
                 continue
 
             except ApiError as e:
 
-                ui.line(
-                    f"[!]: {e.report(with_message=False)} | "
-                    f"Last artwork: "
-                    f"{urls[-1].artw_id if urls else 'N/A'}",
-                    ui.COLOR_ERROR,
+                e.notify(
+                    "Failed to retrieve new page.",
+                    with_report=True,
                 )
 
                 action = rcc.prompt_error_menu(
@@ -454,9 +447,31 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                         return urls
 
+                current = len(urls) + 1
+
+                if mode in ("missing", "chrono"):
+                    current += local_total
+
+                counter = (
+                    f"[{current:0{d_width}d}/{online_total:0{d_width}d}]"
+                    if online_total is not None
+                    else f"[{current}]"
+                )
+
+                progress = (
+                    f"{counter}: "
+                    f"<ID:{illust.id}> "
+                    f"{illust.title}"
+                )                    
+
                 while True:
 
                     try:
+
+                        ui.line(
+                            f"[+]: {progress}",
+                            history=False,
+                        )
 
                         artwork_data = PixivMetadata(   # pyright: ignore[reportAbstractUsage]
                             type="artwork",
@@ -504,46 +519,19 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                         urls.append(artwork_data)
 
-                        current = len(urls)
-
-                        if mode in ("missing", "chrono"):
-                            current += local_total
-
-                        counter = (
-                            f"[{current:0{d_width}d}/{online_total:0{d_width}d}]"
-                            if online_total is not None
-                            else f"[{current}]"
-                        )
-
                         ui.line(
-                            f"[+]: "
-                            f"{counter}: "
-                            f"<ID:{illust.id}> "
-                            f"{illust.title} [Indexed]",
+                            f"[+]: {progress} @@[Indexed]@@.",
+                            tag_color=ui.COLOR_SUCCESS,
                             history=False,
                         )
 
                         break
 
-                    except ApiRateLimitError as e:
+                    except ApiRateLimitError:
 
-                        ui.line(
-                            " | ",
-                            home=False,
-                            clear=False,
-                            history=False,
-                        )
-
-                        ui.line(
-                            f"[!]: {e.report(with_message=False)} | "
-                            f"Artwork: <ID:{illust.id}> "
-                            f"{illust.title}",
-                            ui.COLOR_WARNING,
-                            home=False,
-                            clear=False,
-                        )
-
-                        if rcc.wait_rate_limit() == rcc.Action.ABORT:
+                        if rcc.wait_rate_limit(
+                            f"[!]: {progress}"
+                        ) == rcc.Action.ABORT:
 
                             ui.line(
                                 "[!]: Operation interrupted by user.",
@@ -551,31 +539,17 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                             return urls
 
-                        ui.line(
-                            "[i]: Access limited by the service. "
-                            "Retrying in a moment."
-                        )
-
                         continue
 
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
 
                         # Normalizza le eccezioni di livello superiore a PBDError, per una gestione uniforme
                         e = PBDError.hierarchy(e)
 
-                        ui.line(
-                            " | ",
-                            home=False,
-                            clear=False,
-                            history=False,
+                        e.notify(
+                            f"Failed to index artwork: @@{progress}@@.",
+                            with_report=True,
                         )
-
-                        ui.line(
-                            f"[!]: {e.report()}",
-                            ui.COLOR_ERROR,
-                            home=False,
-                            clear=False,
-                        )                        
 
                         action = rcc.prompt_error_menu(
                             {
@@ -740,10 +714,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                         illust_id = int(match.group(1))
 
+                        progress = f"Adding bookmark: {illust_id}"
+
                         while True:
 
                             ui.line(
-                                f"[+]: Adding bookmark: {illust_id}",
+                                f"[+]: {progress}",
                                 history=False,
                             )
 
@@ -758,31 +734,15 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                                 break
 
-                            except ApiRateLimitError as e:
+                            except ApiRateLimitError:
 
-                                ui.line(
-                                    " | ",
-                                    home=False,
-                                    clear=False,
-                                    history=False,
-                                )
-
-                                ui.line(
-                                    f"[!]: {e.report(with_message=False)}",
-                                    ui.COLOR_WARNING,
-                                    home=False,
-                                    clear=False,
-                                )
-
-                                if rcc.wait_rate_limit() == rcc.Action.ABORT:
+                                if rcc.wait_rate_limit(
+                                    f"[!]: {progress}"
+                                ) == rcc.Action.ABORT:
 
                                     final_message = "[!]: Operation interrupted by user."
 
                                     raise rcc.Abort
-
-                                ui.line(
-                                    "[i]: Access limited by the service. Retrying in a moment."
-                                )
 
                                 continue
 
@@ -792,18 +752,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                                 statistics["not_found"] += 1
 
-                                ui.line(
-                                    " | ",
-                                    home=False,
-                                    clear=False,
-                                    history=False,
-                                )
-
-                                ui.line(
-                                    f"[!]: {e.report()}",
-                                    ui.COLOR_WARNING,
-                                    home=False,
-                                    clear=False,
+                                e.notify(
+                                    f"Page not found for URL: @@{url}@@.",
+                                    with_report=True,
                                 )
 
                                 break
@@ -819,18 +770,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                                 statistics["discarded"] += 1
 
-                                ui.line(
-                                    " | ",
-                                    home=False,
-                                    clear=False,
-                                    history=False,
-                                )
-
-                                ui.line(
-                                    f"[!]: {error_description}",
-                                    ui.COLOR_ERROR,
-                                    home=False,
-                                    clear=False,
+                                e.notify(
+                                    f"Failed to add bookmark: <ID:@@{illust_id}@@.>",
+                                    with_report=True,
                                 )
 
                                 break

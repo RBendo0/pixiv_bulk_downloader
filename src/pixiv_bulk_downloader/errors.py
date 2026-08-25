@@ -51,10 +51,9 @@ class RecoveryControl(Exception):
     @classmethod
     def wait_rate_limit(
         cls, 
+        context: str = "",
         seconds: int = RATE_LIMIT_WAIT,
     ) -> Action:
-
-        ui.line()
 
         for remaining in range(
             seconds,
@@ -63,10 +62,13 @@ class RecoveryControl(Exception):
         ):
 
             ui.line(
-                f"[!]: Access limited. "
+                f"{context}"
+                f"{' | ' if context else ''}"
+                f"@@Access limited. "
                 f"Retry in {remaining}s "
-                f"[A] Abort",
-                history=False, 
+                f"[A] Abort@@.",
+                tag_color=ui.COLOR_WARNING,
+                history=False,
             )
 
             start = time.time()
