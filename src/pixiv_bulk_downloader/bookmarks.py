@@ -8,15 +8,21 @@ from typing import Any
 from pixivpy3.utils import JsonDict
 
 from .base import PixivBaseDownloader
+from .config import config
 from .const import (
+    CONFIG_KEY_AUTHOR_METADATA,
+    DEFAULT_AUTHOR_METADATA,
     DISCARDED_CSV_PREFIX,
     NOT_FOUND_CSV_PREFIX,
 )
 from .errors import (
     ApiError,
     ApiRateLimitError,
+    FileError,
+    InvalidDataFormatError,
     PageNotFoundError,
     PBDError,
+    UserHasNotDefinedCustomConfiguration,
     rcc,
 )
 from .iofile import CsvFile
@@ -36,7 +42,90 @@ from .ui import ui
 
 
 class PixivBookmarksDownloader(PixivBaseDownloader):
-    
+
+    _author_metadata: bool = DEFAULT_AUTHOR_METADATA
+
+    @classmethod
+    def _load_author_metadata_setting(cls) -> None:
+
+        cls._author_metadata = DEFAULT_AUTHOR_METADATA
+
+        try:
+
+            author_metadata = config.load(
+                CONFIG_KEY_AUTHOR_METADATA
+            )
+
+            if author_metadata is None or author_metadata == "":
+                return
+
+            if not isinstance(author_metadata, bool):
+                raise InvalidDataFormatError()
+
+            cls._author_metadata = author_metadata
+
+        except UserHasNotDefinedCustomConfiguration:
+            return
+
+        except (FileError, InvalidDataFormatError) as e:
+
+            e.notify(
+                "Failed to load author metadata setting.",
+                with_report=True,
+            )
+
+            ui.line(
+                "[+]: Author metadata setting will be set to default.",
+                ui.COLOR_WARNING,
+            )
+
+    @classmethod
+    def _show_author_metadata_settings(cls) -> None:
+
+        ui.line(
+            "[+]: Author metadata: [@@"
+            f"{' Enabled' if cls._author_metadata else ' Disabled'}"
+            "@@. ]",
+            tag_color=ui.COLOR_INFO,
+        )
+
+    @classmethod
+    def init(cls) -> None:
+
+        cls._load_author_metadata_setting()
+        cls._show_author_metadata_settings()
+
+    @classmethod
+    def set_author_metadata(cls) -> None:
+
+        ui.line()
+
+        author_metadata = ui.confirm(
+            prompt="Enable author metadata",
+            valid="YN",
+            default=(
+                "Y"
+                if cls._author_metadata
+                else "N"
+            ),
+        )
+
+        cls._author_metadata = author_metadata
+
+        if not config.save_with_interact(
+            key=CONFIG_KEY_AUTHOR_METADATA,
+            value=author_metadata,
+            subject="author metadata setting",
+        ):
+
+            ui.line(
+                "[+]: The new setting will remain active "
+                "for the current session only.",
+                ui.COLOR_WARNING,
+            )
+
+        cls._show_author_metadata_settings()
+
     @classmethod
     def main_download_interact(cls) -> BookmarkOptions | None:
 
@@ -84,16 +173,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         if c2 == ui.KEY_ESCAPE:
             return None
 
-        author_metadata = ui.confirm(
-            prompt="Scaricare metadata autore",
-            valid="YN",
-            default="N",
-        )        
-
         return {
             "mode": mode_map[c1],
             "restrict": privacy_map[c2],
-            "author_metadata": author_metadata,
         }
 
     @classmethod
@@ -231,7 +313,6 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         bookmarks_path: Path,
         mode: BookmarkMode = "all",
         restrict: BookmarkPrivacy = "public",
-        author_metadata: bool = False,
     ) -> list[PixivMetadata] | None:
 
         urls: list[PixivMetadata] = []
@@ -332,6 +413,12 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
         # Stampe informative.
         ui.line("[i]: " + cls.default_abort.prompt)
 
+        counter = (
+            f"[{0:0{d_width}d}/{online_total:0{d_width}d}]"
+            if online_total is not None
+            else "[0]"
+        )
+
         while next_qs is not None:
 
             # E' stata richiesta l'interruzione, esce dal ciclo
@@ -344,7 +431,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             try:
 
                 ui.line(
-                    "[+]: Retrieving new page",
+                    f"[+]: {counter}: Retrieving new page",
                     history=False,
                 )                
 
@@ -370,7 +457,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
             except ApiRateLimitError:
 
                 if rcc.wait_rate_limit(
-                    "[!]: Retrieving new page"
+                    f"[!]: {counter}: Retrieving new page"
                 ) == rcc.Action.ABORT: 
 
                     ui.line(
@@ -496,7 +583,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                         author_data: PixivMetadata | None = None
 
                         if (
-                            author_metadata
+                            cls._author_metadata
                             and artwork_data.author_id not in local.user_ids
                         ):
 
@@ -645,9 +732,9 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                 not_found_csv = CsvFile(not_found_file)
                 discarded_csv = CsvFile(discarded_file)
 
-                ui.line(f"[i]: List ......... : {source_file.name}")
-                ui.line(f"[i]: URLs ......... : {len(lines)}")
-                ui.line(f"[i]: Privacy ...... : {options['restrict']}")
+                ui.line(f"[+]: List ......... : {source_file.name}")
+                ui.line(f"[+]: URLs ......... : {len(lines)}")
+                ui.line(f"[+]: Privacy ...... : {options['restrict']}")
 
                 # Chiede conferma a procedere, in caso negativo salta alla lista successiva
                 if not ui.confirm():

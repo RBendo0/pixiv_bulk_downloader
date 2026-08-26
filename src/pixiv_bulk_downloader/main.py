@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 from .animation import m3
@@ -35,6 +36,43 @@ def parse_args() -> CommandLineOptions:
     }
 
 
+def settings_interact() -> None:
+
+    actions = {
+        "1": sd.config_root_dir,
+        "2": pbd.set_author_metadata,
+        "3": m3.set_preferred_media_formats,
+        "4": config.Advanced.show_and_reset_settings,
+    }
+
+    while True:
+
+        ui.menu(
+            title="Settings",
+            options={
+                "1": "Configura il percorso dell'archivio",
+                "2": "Configura salvataggio metadata autore",
+                "3": "Configura formati salvataggio animazioni",
+                "4": "Abilita accesso a impostazioni avanzate",
+            },
+            footer="[ESC=Torna al menu principale]",
+            frame=True,
+            top_margin=4,
+        )
+
+        choice = ui.input_key(
+            prompt="[?] Effettuare la scelta desiderata",
+            valid="1234" + ui.KEY_ESCAPE,
+        )
+
+        ui.line()
+
+        if choice == ui.KEY_ESCAPE:
+            break
+
+        actions[choice]()
+
+
 def main_interact() -> None:
 
     actions = {
@@ -42,9 +80,7 @@ def main_interact() -> None:
         "2": lambda: pbd.resume_pending_jobs(sd.bookmarks()),
         "3": lambda: pbd.add_list_to_bookmarks(sd.lists()),
         "4": pbd.convert_bookmarks_to_private,
-        "5": sd.config_root_dir,
-        "6": m3.set_preferred_media_formats,
-        "7": config.Advanced.show_and_reset_settings,
+        "5": settings_interact,
     }
 
     while True:
@@ -56,9 +92,7 @@ def main_interact() -> None:
                 "2": "Riprendi scaricamenti lasciati in sospeso",
                 "3": "Aggiungi preferiti da una lista di url",
                 "4": "Cambia profilo di privacy ai preferiti",
-                "5": "Configura il percorso dell'archivio", 
-                "6": "Configura formati salvataggio animazioni", 
-                "7": "Abilita accesso a impostazioni avanzate",
+                "5": "Impostazioni", 
             },
             footer="[ESC=Termina / SPAZIO=Refresh]",
             frame=True,
@@ -69,7 +103,7 @@ def main_interact() -> None:
             prompt=(
                 "[?] Effettuare la scelta desiderata"
             ),
-            valid="1234567" + ui.KEY_ESCAPE + ui.KEY_SPACE,
+            valid="12345" + ui.KEY_ESCAPE + ui.KEY_SPACE,
         )        
 
         ui.line()
@@ -87,6 +121,17 @@ def main_interact() -> None:
 def _main() -> None:
 
     try:
+
+        timestamp = datetime.now().astimezone().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        ui.line()
+        ui.line()
+        ui.line("==============================================")
+        ui.line(f" PBD :: initialize() :: {timestamp}")
+        ui.line("==============================================")
+        ui.line()
 
         options = parse_args()
 
@@ -106,6 +151,7 @@ def _main() -> None:
         )
 
         sd.init(options["root"])
+        pbd.init()
         m3.init()
 
         ui.line(

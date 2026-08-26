@@ -57,6 +57,7 @@ CONFIG_ADVANCED_FILE: Final[Path] = Path("advanced.json")
 
 # LISTA DELLE CHIAVI
 CONFIG_KEY_USER_ROOT: Final[str] = "user_root"
+CONFIG_KEY_AUTHOR_METADATA: Final[str] = "author_metadata"
 CONFIG_KEY_PREF_MEDIA: Final[str] = "preferred_media_formats"
 
 ADVANCED_KEY_CODEC: Final[str] = "codec"
@@ -64,6 +65,8 @@ ADVANCED_KEY_WEBM_CODEC: Final[str] = f"{ADVANCED_KEY_CODEC}.webm"
 ADVANCED_KEY_MP4_CODEC: Final[str] = f"{ADVANCED_KEY_CODEC}.mp4"
 
 # IMPOSTAZIONI DI DEFAULT
+DEFAULT_AUTHOR_METADATA: Final[bool] = False
+
 DEFAULT_PREFERRED_MEDIA_FORMATS: Final[PreferredMediaFormats] = PreferredMediaFormats(
     gif=True,
     webm=True,
