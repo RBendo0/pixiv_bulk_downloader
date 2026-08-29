@@ -3,6 +3,7 @@ from enum import Enum, auto
 from http.client import RemoteDisconnected
 from math import ceil
 
+from .debug import debug
 from .timing import (
     MENU_TIMEOUT,
     RATE_LIMIT_WAIT,
@@ -161,6 +162,13 @@ class PBDError(Exception):
 
         with ui.suspend_thread_rendering():
 
+            if debug.enabled():
+                ui.line(
+                    f"[#]: {debug.DTB.error_info(self)}",
+                    ui.COLOR_DEBUG,
+                    tag_color=ui.COLOR_DEFAULT,
+                )
+
             ui.line(
                 f"[!]: {message}",
                 ui.COLOR_ERROR,
@@ -168,11 +176,11 @@ class PBDError(Exception):
             )
 
             if with_report:
-
                 ui.line(
                     f"    {self.report()}",
                     ui.COLOR_ERROR,
-                )    
+                    tag_color=ui.COLOR_WARNING,
+                )
 
     @classmethod
     def hierarchy(cls, e: Exception) -> "PBDError":
@@ -181,12 +189,12 @@ class PBDError(Exception):
             return e
 
         if isinstance(e, FileNotFoundError):
-            return MissingFileError(str(e))
+            error = MissingFileError(str(e))
 
-        if isinstance(e, OSError):
-            return FileOperationError(str(e))
+        elif isinstance(e, OSError):
+            error = FileOperationError(str(e))
 
-        if isinstance(
+        elif isinstance(
             e,
             (
                 KeyError,
@@ -194,14 +202,23 @@ class PBDError(Exception):
                 ValueError,
             ),
         ):
-            return InvalidDataFormatError(str(e))
+            error = InvalidDataFormatError(str(e))
 
-        return PBDError(str(e))
+        else:
+            error = PBDError(str(e))
+
+        debug.DTB.inherit(error, e)
+
+        return error
 
     @classmethod
     def cast(cls, e: Exception) -> "PBDError":
 
-        return PBDError(str(e))
+        error = PBDError(str(e))
+
+        debug.DTB.inherit(error, e)
+
+        return error
 
 
 class ApiError(PBDError):
@@ -329,20 +346,24 @@ class ConfigError(PBDError):
     @classmethod
     def hierarchy(
         cls,
-        error: Exception,
+        e: Exception,
     ) -> PBDError:
 
-        error = PBDError.hierarchy(error)
+        e = PBDError.hierarchy(e)
 
         if isinstance(
-            error,
+            e,
             MissingFileError,
         ):
-            return UserHasNotDefinedCustomConfiguration(
-                str(error)
+            error = UserHasNotDefinedCustomConfiguration(
+                str(e)
             )
 
-        return error
+            debug.DTB.inherit(error, e)
+
+            return error
+
+        return e
 
     
 class UserHasNotDefinedCustomConfiguration(ConfigError):
@@ -369,7 +390,7 @@ class EncoderError(AnimationError):
         return "Encoder Error"
 
 
-class FFmpegError(EncoderError):
+class MediaToolError(EncoderError):
 
     @classmethod
     def info(cls) -> str:
@@ -377,7 +398,7 @@ class FFmpegError(EncoderError):
         return "FFmpeg Error"
 
 
-class FFmpegExecutableError(FFmpegError):
+class MediaToolExecutableError(MediaToolError):
 
     @classmethod
     def info(cls) -> str:
@@ -387,16 +408,20 @@ class FFmpegExecutableError(FFmpegError):
     @classmethod
     def hierarchy(
         cls,
-        error: Exception,
+        e: Exception,
     ) -> PBDError:
 
-        if isinstance(error, OSError):
-            return cls(str(error))
+        if isinstance(e, OSError):
+            error = cls(str(e))
 
-        return PBDError.hierarchy(error)
+            debug.DTB.inherit(error, e)
+
+            return error
+
+        return PBDError.hierarchy(e)
 
 
-class FFmpegExecutionError(FFmpegError):
+class MediaToolExecutionError(MediaToolError):
 
     @classmethod
     def info(cls) -> str:
@@ -414,19 +439,23 @@ class EncoderStreamError(EncoderError):
     @classmethod
     def hierarchy(
         cls,
-        error: Exception,
+        e: Exception,
     ) -> PBDError:
 
-        error = PBDError.hierarchy(error)
+        e = PBDError.hierarchy(e)
 
         if isinstance(
-            error,
+            e,
             (
                 FileError,
                 InvalidDataFormatError,
             ),
         ):
 
-            return cls(str(error))
+            error = cls(str(e))
 
-        return error
+            debug.DTB.inherit(error, e)
+
+            return error
+
+        return e

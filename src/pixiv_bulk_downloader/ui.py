@@ -31,15 +31,16 @@ class UI:
     # Colori disponibili
     # ------------------
     
-    COLOR_DEFAULT = "\033[37m"    # bianco
-    COLOR_SUCCESS = "\033[32m"    # verde
-    COLOR_WARNING = "\033[33m"    # giallo
-    COLOR_ERROR = "\033[31m"      # rosso
+    COLOR_DEFAULT = "\033[37m"              # bianco
+    COLOR_SUCCESS = "\033[32m"              # verde
+    COLOR_WARNING = "\033[33m"              # giallo
+    COLOR_ERROR = "\033[31m"                # rosso
+    COLOR_DEBUG = "\033[38;2;255;128;0m"    # arancione
 
-    COLOR_INFO = "\033[90m"       # grigio scuro
-    COLOR_INPUT = "\033[36m"      # ciano
+    COLOR_INFO = "\033[90m"                 # grigio scuro
+    COLOR_INPUT = "\033[36m"                # ciano
 
-    COLOR_RESET = "\033[0m"       # nero
+    COLOR_RESET = "\033[0m"                 # nero
 
     # --------------
     # Tasti speciali

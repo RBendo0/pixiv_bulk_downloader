@@ -11,8 +11,7 @@ from .const import (
     CONFIG_KEY_PREF_MEDIA,
     DEFAULT_CODEC_SETTINGS,
     DEFAULT_PREFERRED_MEDIA_FORMATS,
-    FFMPEG_ENCODERS,
-    FFMPEG_EXECUTABLE,
+    MEDIA_TOOL_ENCODERS,
 )
 from .debug import debug
 from .encoder import Encoder, MediaFormat
@@ -333,7 +332,7 @@ class MultiMediaManager:
             formats.append(
                 (
                     "webm",
-                    FFMPEG_ENCODERS[cls._codec.webm],
+                    MEDIA_TOOL_ENCODERS[cls._codec.webm],
                 )
             )
 
@@ -341,11 +340,11 @@ class MultiMediaManager:
             formats.append(
                 (
                     "mp4",
-                    FFMPEG_ENCODERS[cls._codec.mp4],
+                    MEDIA_TOOL_ENCODERS[cls._codec.mp4],
                 )
             )
 
-        encoder = Encoder(FFMPEG_EXECUTABLE)
+        encoder = Encoder()
 
         frame_total = len(frames)
 

@@ -33,7 +33,7 @@ class FrameSpec(TypedDict):
 
 
 @dataclass(frozen=True)
-class FFmpegResult:
+class MediaToolResult:
     code: int
     log_file: Path
 

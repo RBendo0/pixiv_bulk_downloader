@@ -7,16 +7,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import IO, Literal
 
-from .const import FFMPEG_LOG_DIR
+from .const import (
+    MEDIA_TOOL_EXECUTABLE,
+    MEDIA_TOOL_LOG_DIR,
+)
 from .debug import debug
 from .errors import (
     EncoderStreamError,
-    FFmpegExecutableError,
-    FFmpegExecutionError,
     InvalidDataFormatError,
+    MediaToolExecutableError,
+    MediaToolExecutionError,
     PBDError,
 )
-from .pbd_types import FFmpegResult, FrameSpec
+from .pbd_types import FrameSpec, MediaToolResult
 
 MediaFormat = Literal["gif", "webm", "mp4"]
 
@@ -35,7 +38,7 @@ class DebuggedFFmpegProcess:
         )
 
         self._error_log_path = (
-            FFMPEG_LOG_DIR
+            MEDIA_TOOL_LOG_DIR
             / (
                 f"{timestamp}_"
                 f"{log_id}_"
@@ -49,7 +52,7 @@ class DebuggedFFmpegProcess:
         if debug.simulation():
             return
 
-        FFMPEG_LOG_DIR.mkdir(
+        MEDIA_TOOL_LOG_DIR.mkdir(
             parents=True,
             exist_ok=True,
         )
@@ -150,10 +153,10 @@ class DebuggedFFmpegProcess:
 
     def wait(
         self,
-    ) -> FFmpegResult:
+    ) -> MediaToolResult:
 
         if debug.simulation():
-            return FFmpegResult(
+            return MediaToolResult(
                 code=0,
                 log_file=self._error_log_path,
             )
@@ -176,7 +179,7 @@ class DebuggedFFmpegProcess:
         ):
             self._error_log_path.unlink()
 
-        return FFmpegResult(
+        return MediaToolResult(
             code=return_code,
             log_file=self._error_log_path,
         )
@@ -184,7 +187,7 @@ class DebuggedFFmpegProcess:
 
 class Encoder:
     """
-    Encoder FFmpeg riutilizzabile per conversioni sequenziali.
+    Encoder riutilizzabile per conversioni sequenziali.
 
     Ogni ciclo di conversione segue il protocollo:
 
@@ -199,9 +202,8 @@ class Encoder:
 
     def __init__(
         self,
-        ffmpeg: Path,
     ) -> None:
-        self._ffmpeg = ffmpeg
+        self._media_tool = MEDIA_TOOL_EXECUTABLE
 
         self._process: DebuggedFFmpegProcess | None = None
 
@@ -349,7 +351,7 @@ class Encoder:
             input_framerate = f"1000/{self._tick_ms}"
 
             command = [
-                str(self._ffmpeg),
+                str(self._media_tool),
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -377,7 +379,7 @@ class Encoder:
 
             except Exception as e:
 
-                raise FFmpegExecutableError.hierarchy(e) from e
+                raise MediaToolExecutableError.hierarchy(e) from e
 
         except Exception as e:
 
@@ -470,7 +472,7 @@ class Encoder:
 
                 if result.code != 0:
 
-                    raise FFmpegExecutionError(
+                    raise MediaToolExecutionError(
                         f"FFmpeg exited with code {result.code}. "
                         f"For more details, see error log: "
                         f"{result.log_file.name}"

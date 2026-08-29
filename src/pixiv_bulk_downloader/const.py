@@ -44,6 +44,20 @@ FFMPEG_LOG_DIR: Final[Path] = (
     / "ffmpeg"
 )
 
+# TRADUZIONE DEI SIMBOLI DEI CODEC
+# NEL NOME DELL'ENCODER FFMPEG
+FFMPEG_ENCODERS: Final[dict[str, str]] = {
+    "vp8":  "libvpx",
+    "vp9":  "libvpx-vp9",
+    "av1":  "libaom-av1",
+    "h264": "libx264",
+    "h265": "libx265",
+}
+
+MEDIA_TOOL_EXECUTABLE: Final[Path] = FFMPEG_EXECUTABLE
+MEDIA_TOOL_LOG_DIR: Final[Path] = FFMPEG_LOG_DIR
+MEDIA_TOOL_ENCODERS: Final[dict[str, str]] = FFMPEG_ENCODERS
+
 # CARTELLA DELLE IMPOSTAZIONI: salvata sono nella root di default
 CONF_DIR: Final[Path] = Path("conf")
 
@@ -93,16 +107,6 @@ DEFAULT_CODEC_SETTINGS: Final[CodecSettings] = CodecSettings(
     webm="vp9",
     mp4="h264",
 )
-
-# TRADUZIONE DEI SIMBOLI DEI CODEC
-# NEL NOME DELL'ENCODER FFMPEG
-FFMPEG_ENCODERS: Final[dict[str, str]] = {
-    "vp8":  "libvpx",
-    "vp9":  "libvpx-vp9",
-    "av1":  "libaom-av1",
-    "h264": "libx264",
-    "h265": "libx265",
-}
 
 # SEMANTICA DEI FILES LISTA PREFERITI
 NOT_FOUND_CSV_PREFIX: Final[str] = "not_found_"

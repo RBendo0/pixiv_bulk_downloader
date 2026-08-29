@@ -7,11 +7,6 @@ from .const import (
     DEFAULT_DEBUG_FAULT_INJECTION,
     DEFAULT_DEBUG_SIMULATION,
 )
-from .errors import (
-    FileError,
-    InvalidDataFormatError,
-    UserHasNotDefinedCustomConfiguration,
-)
 from .ui import ui
 
 
@@ -26,6 +21,12 @@ class Debug:
         cls,
         key: str,
     ) -> bool | None:
+
+        from .errors import (
+            FileError,
+            InvalidDataFormatError,
+            UserHasNotDefinedCustomConfiguration,
+        )
 
         try:
 
@@ -115,6 +116,59 @@ class Debug:
     @classmethod
     def fault_injection(cls) -> bool:
         return cls._enabled and cls._fault_injection
+
+    class DTB:
+
+        # ===================
+        # Debug Trace Binding
+        # ===================
+
+        _debug_id: int = 0
+
+        @classmethod
+        def register(
+            cls,
+            error: Exception,
+            message: str,
+        ) -> None:
+
+            if not Debug._enabled:
+                return
+
+            cls._debug_id += 1
+
+            error._debug_info = (  # pyright: ignore[reportAttributeAccessIssue]
+                f"Debug ID {cls._debug_id:05d}: {message}"
+            )
+
+        @classmethod
+        def inherit(
+            cls,
+            error: Exception,
+            source: Exception,
+        ) -> None:
+
+            if not Debug._enabled:
+                return
+
+            debug_info = getattr(source, "_debug_info", None)
+
+            if debug_info is None:
+                return
+
+            error._debug_info = debug_info  # pyright: ignore[reportAttributeAccessIssue]
+
+        @classmethod
+        def error_info(
+            cls,
+            error: Exception,
+        ) -> str:
+
+            return getattr(
+                error,
+                "_debug_info",
+                "Debug ID: not associated",
+            )
 
 
 # Alias della classe statica che gestisce il debug
