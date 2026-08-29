@@ -17,6 +17,7 @@ from threading import (
     current_thread,
     get_ident,
 )
+from typing import ClassVar
 
 import pwinput
 from wcwidth import wcswidth
@@ -713,8 +714,8 @@ class UI:
 
         _thread: Thread | None = None
 
-        _thread_slots: dict[int, int] = {}
-        _slots: list[str] = [""]
+        _thread_slots: ClassVar[dict[int, int]] = {}
+        _slots: ClassVar[list[str]] = [""]        
 
         _started_at: float | None = None
 

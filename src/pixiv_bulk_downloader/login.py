@@ -133,20 +133,6 @@ class PixivLogin:
             timeout=60000,
         )
 
-
-    async def _wait_for_redirect(self) -> None:
-
-        if self.page is None:
-            raise RuntimeError("Chrome page is not available.")
-
-        await self.page.wait_for_url(
-            re.compile(
-                f"^{re.escape(self.REDIRECT_URI)}"
-            ),
-            wait_until="networkidle",
-            timeout=60000,
-        )
-
     async def _browser_login(self) -> str:
 
         code_verifier, code_challenge = self._oauth_pkce()

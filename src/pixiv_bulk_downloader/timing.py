@@ -13,10 +13,13 @@ API_DELAY_MEDIUM = (0.2, 0.8)
 API_DELAY_LOW = (0.05, 0.2)
 API_DELAY_TURBO = (0.0, 0.02)
 
+# Debug Sim
+
+SIMULATION_DELAY = (0.1, 0.5)
 
 # Time delay randomizer
 
-def random_api_delay(
+def random_delay(
     t_min: float = API_DELAY_HIGH[0], 
     t_max: float = API_DELAY_HIGH[1],
 ) -> None:

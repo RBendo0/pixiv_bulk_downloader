@@ -41,7 +41,7 @@ class Config:
                 path
             ).load()
 
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
 
             raise ConfigError.hierarchy(
                 error
@@ -60,7 +60,7 @@ class Config:
                 path
             ).save(data)
 
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
 
             raise ConfigError.hierarchy(
                 error
@@ -340,6 +340,51 @@ class Config:
                         "l'opzione desiderata mantenendola nel formato stringa.",
 
                     ],
+
+                },
+
+                "debug": {
+
+                    "enabled": {
+                        "caption": [
+                            "Enable debug mode."
+                        ],
+                        "available_choices": [
+                            False,
+                            True
+                        ],
+                        "value": False
+                    },
+
+                    "simulation": {
+
+                        "caption": [
+                            "Enable simulation mode.",
+                            "Media downloads and conversions are simulated.",
+                        ],
+
+                        "available_choices": [
+                            False,
+                            True,
+                        ],
+
+                        "value": False,
+                    },
+
+                    "fault_injection": {
+
+                        "caption": [
+                            "Enable fault injection.",
+                            "Artificial failures are injected for testing purposes.",
+                        ],
+
+                        "available_choices": [
+                            False,
+                            True,
+                        ],
+
+                        "value": False,
+                    },
 
                 },
 

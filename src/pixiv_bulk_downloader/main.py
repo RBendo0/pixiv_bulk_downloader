@@ -7,6 +7,7 @@ from pathlib import Path
 from .animation import m3
 from .bookmarks import pbd
 from .config import config
+from .debug import debug
 from .errors import (
     LoginFailedError,
     PBDError,
@@ -150,6 +151,7 @@ def _main() -> None:
             "[+]: Login...OK!",
         )
 
+        debug.init()
         sd.init(options["root"])
         pbd.init()
         m3.init()

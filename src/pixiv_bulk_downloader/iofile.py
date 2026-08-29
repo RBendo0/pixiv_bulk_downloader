@@ -28,7 +28,7 @@ class BaseFile:
 
             yield
 
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
 
             raise PBDError.hierarchy(error) from None
 
@@ -37,14 +37,14 @@ class JsonFile(BaseFile):
 
     def load(self) -> Any:
 
-        with self._handle_errors():
-        
-            with self._path.open(
+        with (
+            self._handle_errors(),
+            self._path.open(
                 "r",
                 encoding="utf-8",
-            ) as file:
-
-                return json.load(file)
+            ) as file,
+        ):
+            return json.load(file)
 
     def save(
         self,
@@ -101,15 +101,16 @@ class CsvFile(BaseFile):
         *columns: Any,
     ) -> None:
 
-        with self._handle_errors():
 
-            with self._path.open(
+        with (
+            self._handle_errors(),
+            self._path.open(
                 "a",
                 encoding="utf-8",
                 newline="",
-            ) as file:
-
-                csv.writer(file).writerow(columns)
+            ) as file,
+        ):
+            csv.writer(file).writerow(columns)
 
     def truncate_last(
         self,

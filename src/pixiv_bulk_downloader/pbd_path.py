@@ -8,6 +8,7 @@ from .const import (
     DEFAULT_ROOT,
     LISTS_DIR,
 )
+from .debug import debug
 from .errors import (
     FileError,
     FileOperationError,
@@ -299,6 +300,14 @@ class StorageDirs:
 
     @classmethod
     def bookmarks(cls) -> Path:
+
+        if debug.simulation():
+            return (
+                cls._default_root
+                / "debug"
+                / BOOKMARKS_DIR
+            )
+
         return cls._bookmarks
 
     @classmethod

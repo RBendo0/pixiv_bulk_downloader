@@ -2,6 +2,7 @@ import zipfile
 from collections.abc import Sequence
 from dataclasses import asdict, replace
 from pathlib import Path
+from typing import Self
 
 from .config import config
 from .const import (
@@ -13,7 +14,8 @@ from .const import (
     FFMPEG_ENCODERS,
     FFMPEG_EXECUTABLE,
 )
-from .encoder import Encoder, FrameSpec, MediaFormat
+from .debug import debug
+from .encoder import Encoder, MediaFormat
 from .errors import (
     AnimationError,
     ConfigError,
@@ -22,12 +24,94 @@ from .errors import (
     PBDError,
     UserHasNotDefinedCustomConfiguration,
 )
-from .pbd_types import (
-    CodecSettings,
-    PreferredMediaFormats,
-    ToggleOption,
-)
+from .pbd_types import CodecSettings, FrameSpec, PreferredMediaFormats, ToggleOption
 from .ui import ui
+
+
+class DebuggedZipFile:
+
+    def __init__(
+        self,
+        path: Path | str,
+        frames: Sequence[FrameSpec],
+    ) -> None:
+
+        self._path = Path(path)
+        self._frames = frames
+        self._archive: zipfile.ZipFile | None = None
+
+    def __enter__(
+        self,
+    ) -> Self:
+
+        if not debug.simulation():
+            self._archive = zipfile.ZipFile(
+                self._path,
+                "r",
+            )
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc_value: object,
+        traceback: object,
+    ) -> None:
+
+        if self._archive is not None:
+            self._archive.close()
+
+        self._archive = None
+
+    def namelist(
+        self,
+    ) -> list[str] | None:
+
+        if debug.simulation():
+
+            names: list[str] = []
+
+            for frame in self._frames:
+
+                try:
+                    names.append(
+                        str(frame["file"])
+                    )
+
+                except (KeyError, TypeError):
+                    continue
+
+            return names
+
+        if self._archive is None:
+            return None
+
+        return self._archive.namelist()
+
+    def read(
+        self,
+        name: str,
+    ) -> bytes | None:
+
+        if debug.simulation():
+
+            names = self.namelist()
+
+            if names is None:
+                return None
+
+            if name not in names:
+                raise KeyError(
+                    f"There is no item named {name!r} in the archive"
+                )
+
+            return b""
+
+        if self._archive is None:
+            return None
+
+        return self._archive.read(name)
 
 
 class MultiMediaManager:
@@ -293,14 +377,21 @@ class MultiMediaManager:
 
         try:
 
-            with zipfile.ZipFile(
+            with DebuggedZipFile(
                 zip_path,
-                "r",
+                frames,
             ) as archive:
 
+                archive_names_list = archive.namelist()
+
+                if archive_names_list is None:
+                    raise AnimationError(
+                        f"Animation archive {zip_path.name!r} is not initialized"
+                    )
+
                 archive_names = set(
-                    archive.namelist()
-                )
+                    archive_names_list
+                )                
 
                 for frame_index, frame in enumerate(
                     frames,
@@ -401,8 +492,8 @@ class MultiMediaManager:
 
                         # storico console
                         error.notify(
-                            f"Failed to encode {format_label} | "
-                            f"Artwork: <ID:{log_id}>",
+                            f"Failed to encode @@{format_label}@@. | "
+                            f"Artwork: <ID:@@{log_id}@@.>",
                             with_report=True,
                         )
 

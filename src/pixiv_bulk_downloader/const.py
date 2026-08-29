@@ -60,6 +60,17 @@ CONFIG_KEY_USER_ROOT: Final[str] = "user_root"
 CONFIG_KEY_AUTHOR_METADATA: Final[str] = "author_metadata"
 CONFIG_KEY_PREF_MEDIA: Final[str] = "preferred_media_formats"
 
+ADVANCED_KEY_DEBUG: Final[str] = "debug"
+ADVANCED_KEY_DEBUG_ENABLED: Final[str] = (
+    f"{ADVANCED_KEY_DEBUG}.enabled"
+)
+ADVANCED_KEY_DEBUG_SIMULATION: Final[str] = (
+    f"{ADVANCED_KEY_DEBUG}.simulation"
+)
+ADVANCED_KEY_DEBUG_FAULT_INJECTION: Final[str] = (
+    f"{ADVANCED_KEY_DEBUG}.fault_injection"
+)
+
 ADVANCED_KEY_CODEC: Final[str] = "codec"
 ADVANCED_KEY_WEBM_CODEC: Final[str] = f"{ADVANCED_KEY_CODEC}.webm"
 ADVANCED_KEY_MP4_CODEC: Final[str] = f"{ADVANCED_KEY_CODEC}.mp4"
@@ -74,6 +85,10 @@ DEFAULT_PREFERRED_MEDIA_FORMATS: Final[PreferredMediaFormats] = PreferredMediaFo
 )
 
 # IMPOSTAZIONI DI DEFAULT AVANZATE
+DEFAULT_DEBUG_ENABLED: Final[bool] = False
+DEFAULT_DEBUG_SIMULATION: Final[bool] = False
+DEFAULT_DEBUG_FAULT_INJECTION: Final[bool] = False
+
 DEFAULT_CODEC_SETTINGS: Final[CodecSettings] = CodecSettings(
     webm="vp9",
     mp4="h264",

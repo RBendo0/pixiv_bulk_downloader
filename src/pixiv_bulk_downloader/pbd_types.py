@@ -27,6 +27,17 @@ MetadataPayload = Literal[
 ]
 
 
+class FrameSpec(TypedDict):
+    file: str
+    delay: int
+
+
+@dataclass(frozen=True)
+class FFmpegResult:
+    code: int
+    log_file: Path
+
+
 class MetadataVersionDescriptor(TypedDict):
     LAST: int
     CURRENT: int
@@ -57,7 +68,6 @@ BookmarkPrivacy = Literal[
 class BookmarkOptions(TypedDict):
     mode: BookmarkMode
     restrict: BookmarkPrivacy
-    author_metadata: bool
 
 
 class AddListOptions(TypedDict):

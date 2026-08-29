@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import math
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Any, Literal
+from typing import IO, Literal
 
 from .const import FFMPEG_LOG_DIR
+from .debug import debug
 from .errors import (
     EncoderStreamError,
     FFmpegExecutableError,
@@ -15,9 +16,170 @@ from .errors import (
     InvalidDataFormatError,
     PBDError,
 )
+from .pbd_types import FFmpegResult, FrameSpec
 
 MediaFormat = Literal["gif", "webm", "mp4"]
-FrameSpec = Mapping[str, Any]
+
+
+class DebuggedFFmpegProcess:
+
+    def __init__(
+        self,
+        command: Sequence[str],
+        log_id: int,
+        output_path: Path,
+    ) -> None:
+
+        timestamp = datetime.now().astimezone().strftime(
+            "%Y%m%d_%H%M%S"
+        )
+
+        self._error_log_path = (
+            FFMPEG_LOG_DIR
+            / (
+                f"{timestamp}_"
+                f"{log_id}_"
+                f"{output_path.name}.log"
+            )
+        )
+
+        self._process: subprocess.Popen[bytes] | None = None
+        self._error_log: IO[bytes] | None = None
+
+        if debug.simulation():
+            return
+
+        FFMPEG_LOG_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        self._error_log = self._error_log_path.open(
+            "w+b"
+        )
+
+        try:
+
+            self._process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=self._error_log,
+            )
+
+            if self._process.stdin is None:
+                raise EncoderStreamError(
+                    "FFmpeg input stream is unavailable"
+                )
+
+        except Exception:
+
+            self._close_log()
+
+            if self._error_log_path.exists():
+                self._error_log_path.unlink()
+
+            raise
+
+    def _close_log(
+        self,
+    ) -> None:
+
+        if (
+            self._error_log is not None
+            and not self._error_log.closed
+        ):
+            self._error_log.close()
+
+    def write(
+        self,
+        data: bytes | None,
+    ) -> None:
+
+        if debug.simulation():
+            return
+
+        if data is None:
+            raise EncoderStreamError(
+                "FFmpeg input data is unavailable"
+            )
+
+        if self._process is None or self._process.stdin is None:
+            raise EncoderStreamError(
+                "FFmpeg process is unavailable"
+            )
+
+        self._process.stdin.write(data)
+
+    def close_input(
+        self,
+    ) -> None:
+
+        if debug.simulation():
+            return
+
+        if self._process is None or self._process.stdin is None:
+            raise EncoderStreamError(
+                "FFmpeg process is unavailable"
+            )
+
+        if not self._process.stdin.closed:
+            self._process.stdin.close()
+
+    def abort(
+        self,
+    ) -> None:
+
+        if debug.simulation():
+            return
+
+        if self._process is None:
+            raise EncoderStreamError(
+                "FFmpeg process is unavailable"
+            )
+
+        try:
+
+            if self._process.poll() is None:
+                self._process.kill()
+
+            self._process.wait()
+
+        finally:
+            self._close_log()
+
+    def wait(
+        self,
+    ) -> FFmpegResult:
+
+        if debug.simulation():
+            return FFmpegResult(
+                code=0,
+                log_file=self._error_log_path,
+            )
+
+        if self._process is None:
+            raise EncoderStreamError(
+                "FFmpeg process is unavailable"
+            )
+
+        try:
+
+            return_code = self._process.wait()
+
+        finally:
+            self._close_log()
+
+        if (
+            return_code == 0
+            and self._error_log_path.exists()
+        ):
+            self._error_log_path.unlink()
+
+        return FFmpegResult(
+            code=return_code,
+            log_file=self._error_log_path,
+        )
 
 
 class Encoder:
@@ -41,11 +203,7 @@ class Encoder:
     ) -> None:
         self._ffmpeg = ffmpeg
 
-        self._log_id: int | None = None
-
-        self._process: subprocess.Popen[bytes] | None = None
-        self._error_log: IO[bytes] | None = None
-        self._error_log_path: Path | None = None
+        self._process: DebuggedFFmpegProcess | None = None
 
         self._frames: Sequence[FrameSpec] = ()
         self._frame_index = 0
@@ -107,9 +265,11 @@ class Encoder:
         if format_name == "gif":
             return [
                 "-filter_complex",
-                "[0:v]split[a][b];"
-                "[a]palettegen[p];"
-                "[b][p]paletteuse",
+                (
+                    "[0:v]split[a][b];"
+                    "[a]palettegen[p];"
+                    "[b][p]paletteuse"
+                ),
                 "-loop",
                 "0",
                 str(output_path),
@@ -176,8 +336,6 @@ class Encoder:
 
             self._reset()
 
-            self._log_id = log_id
-
             self._frames = frames
             self._frame_index = 0
             self._tick_ms = self._common_delay_tick_ms(frames)
@@ -209,41 +367,13 @@ class Encoder:
                 ),
             ]
 
-            FFMPEG_LOG_DIR.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
-            timestamp = datetime.now().strftime(
-                "%Y%m%d_%H%M%S"
-            )
-
-            self._error_log_path = (
-                FFMPEG_LOG_DIR
-                / (
-                    f"{timestamp}_"
-                    f"{log_id}_"
-                    f"{output_path.name}.log"
-                )
-            )
-
-            self._error_log = self._error_log_path.open(
-                "w+b"
-            )
-
             try:
 
-                self._process = subprocess.Popen(
+                self._process = DebuggedFFmpegProcess(
                     command,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.DEVNULL,
-                    stderr=self._error_log,
+                    log_id,
+                    output_path,
                 )
-
-                if self._process.stdin is None:
-                    raise EncoderStreamError(
-                        "FFmpeg input stream is unavailable"
-                    )
 
             except Exception as e:
 
@@ -255,8 +385,9 @@ class Encoder:
 
     def add(
         self,
-        image_data: bytes,
+        image_data: bytes | None,
     ) -> None:
+
         """
         Invia a FFmpeg l'immagine corrispondente al frame corrente.
 
@@ -266,7 +397,7 @@ class Encoder:
 
         try:
 
-            if self._process is None or self._process.stdin is None:
+            if self._process is None:
                 raise EncoderStreamError(
                     "Encoder not ready. Ensure .start() is called before first .add()"
                 )
@@ -285,7 +416,7 @@ class Encoder:
             try:
 
                 for _ in range(repetitions):
-                    self._process.stdin.write(image_data)
+                    self._process.write(image_data)
 
             except Exception as e:
 
@@ -310,22 +441,16 @@ class Encoder:
 
         try:
 
-            if self._process is None or self._process.stdin is None:
+            if self._process is None:
                 raise EncoderStreamError(
                     "Encoder not ready. Ensure .start() is called before .stop()"
                 )
 
             process = self._process
-            stdin = process.stdin
-
-            assert stdin is not None
-
-            success = False
 
             try:
 
-                if not stdin.closed:
-                    stdin.close()
+                process.close_input()
 
                 if self._frame_index != len(self._frames):
 
@@ -334,44 +459,24 @@ class Encoder:
                         - self._frame_index
                     )
 
-                    if process.poll() is None:
-                        process.kill()
-
-                    process.wait()
+                    process.abort()
 
                     raise EncoderStreamError(
                         "Frame stream underflow: not enough frames provided "
                         f"(missing {missing} frames)"
                     )
 
-                return_code = process.wait()
+                result = process.wait()
 
-                if return_code != 0:
-
-                    assert self._error_log_path is not None
+                if result.code != 0:
 
                     raise FFmpegExecutionError(
-                        f"FFmpeg exited with code {return_code}. "
+                        f"FFmpeg exited with code {result.code}. "
                         f"For more details, see error log: "
-                        f"{self._error_log_path.name}"
+                        f"{result.log_file.name}"
                     )
 
-                success = True
-
             finally:
-
-                if (
-                    self._error_log is not None
-                    and not self._error_log.closed
-                ):
-                    self._error_log.close()
-
-                if (
-                    success
-                    and self._error_log_path is not None
-                    and self._error_log_path.exists()
-                ):
-                    self._error_log_path.unlink()
 
                 self._reset()
 
@@ -383,9 +488,6 @@ class Encoder:
     def _reset(self) -> None:
 
         self._process = None
-        self._error_log = None
-        self._error_log_path = None
-        self._log_id = None
         self._frames = ()
         self._frame_index = 0
-        self._tick_ms = 0 
+        self._tick_ms = 0

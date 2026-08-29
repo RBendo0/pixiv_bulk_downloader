@@ -36,7 +36,7 @@ from .pbd_types import (
 from .pixiv_call_api import caapi
 from .timing import (
     API_DELAY_TURBO,
-    random_api_delay,
+    random_delay,
 )
 from .ui import ui
 
@@ -666,7 +666,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
 
                             continue
 
-            random_api_delay()
+            random_delay()
 
         else:
 
@@ -868,7 +868,7 @@ class PixivBookmarksDownloader(PixivBaseDownloader):
                     source_csv.truncate_last()
 
                     # Ritardo casuale tra le chiamate API, per evitare il rate limit
-                    random_api_delay(*API_DELAY_TURBO)
+                    random_delay(*API_DELAY_TURBO)
 
         except rcc.Abort:
 

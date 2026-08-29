@@ -11,6 +11,7 @@ from .const import (
     AUTHOR_METADATA_FILE,
     UGOIRA_ZIP_FILE,
 )
+from .debug import debug
 from .errors import (
     AnimationError,
     DownloadRateLimitError,
@@ -20,6 +21,7 @@ from .errors import (
 from .metadata import PixivMetadata
 from .pbd_path import PixivPath
 from .pixiv_call_api import caapi
+from .timing import SIMULATION_DELAY, random_delay
 from .tps import TPS
 from .ui import ui
 
@@ -244,11 +246,11 @@ class PixivBaseDownloader:
                     F"{fname}",
                 )
 
-                caapi.download(
+                cls._download_illust(
                     link,
                     path=str(work_dir),
                     fname=fname,
-                )                            
+                )
 
                 if metadata.artw_is_ugoira:
 
@@ -295,7 +297,7 @@ class PixivBaseDownloader:
 
                 e.notify(
                     f"Failed to build animation | "
-                    f"Artwork: <ID:{metadata.artw_id}> "
+                    f"Artwork: <ID:@@{metadata.artw_id}@@.> "
                     f"(checkpoint preserved)",
                     with_report=True,
                 )
@@ -327,7 +329,7 @@ class PixivBaseDownloader:
 
                 e.notify(
                     f"Failed to download media | "
-                    f"Artwork: <ID:{metadata.artw_id}> "
+                    f"Artwork: <ID:@@{metadata.artw_id}@@.> "
                     f"(checkpoint preserved)",
                     with_report=True,
                 )
@@ -352,7 +354,25 @@ class PixivBaseDownloader:
                 )
 
                 return False
-            
+
+    @classmethod
+    def _download_illust(
+        cls,
+        link: str,
+        path: str,
+        fname: str,
+    ) -> None:
+
+        if debug.simulation():
+            random_delay(*SIMULATION_DELAY)
+            return
+
+        caapi.download(
+            link,
+            path=path,
+            fname=fname,
+        )            
+
     @classmethod
     def download(
         cls,

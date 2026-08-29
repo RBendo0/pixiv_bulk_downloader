@@ -4,6 +4,7 @@ import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 
 from pixivpy3.utils import JsonDict
 
@@ -22,12 +23,12 @@ from .pbd_types import (
 
 class PixivMetadata(ABC):
 
-    _VERSION_CLASSES: dict[
+    _VERSION_CLASSES: ClassVar[dict[
         MetadataType,
-        dict[int, type["PixivMetadata"]],
-    ] = {}
+        dict[int, type[PixivMetadata]],
+    ]] = {}
 
-    def __new__(
+    def __new__(  # noqa: PYI034
         cls,
         *,
         type: MetadataType,
