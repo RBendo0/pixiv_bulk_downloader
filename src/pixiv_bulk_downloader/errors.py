@@ -162,13 +162,6 @@ class PBDError(Exception):
 
         with ui.suspend_thread_rendering():
 
-            if debug.enabled():
-                ui.line(
-                    f"[#]: {debug.DTB.error_info(self)}",
-                    ui.COLOR_DEBUG,
-                    tag_color=ui.COLOR_DEFAULT,
-                )
-
             ui.line(
                 f"[!]: {message}",
                 ui.COLOR_ERROR,
@@ -181,6 +174,11 @@ class PBDError(Exception):
                     ui.COLOR_ERROR,
                     tag_color=ui.COLOR_WARNING,
                 )
+
+            debug.DTB.log(
+                self,
+                f"{message} | {self.report()}"
+            )
 
     @classmethod
     def hierarchy(cls, e: Exception) -> "PBDError":

@@ -27,20 +27,20 @@ CHROME_PROFILE_DIR: Final[Path] = (
 )
 
 PROFILE_DIR: Final[Path] = CHROME_PROFILE_DIR
+TOOLS_DIR: Final[Path] = DEFAULT_ROOT / "tools"
+LOG_DIR: Final[Path] = DEFAULT_ROOT / "logs"
 
-TOOLS_DIR: Final[Path] = Path("tools")
+DEBUG_LOG_DIR: Final[Path] = LOG_DIR / "debug"
 
 FFMPEG_EXECUTABLE: Final[Path] = (
-    DEFAULT_ROOT
-    / TOOLS_DIR
+    TOOLS_DIR
     / "ffmpeg"
     / "bin"
     / "ffmpeg.exe"
 )
 
 FFMPEG_LOG_DIR: Final[Path] = (
-    DEFAULT_ROOT
-    / "logs"
+    LOG_DIR
     / "ffmpeg"
 )
 

@@ -1,13 +1,39 @@
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from threading import Lock
+
 from .config import config
 from .const import (
     ADVANCED_KEY_DEBUG_ENABLED,
     ADVANCED_KEY_DEBUG_FAULT_INJECTION,
     ADVANCED_KEY_DEBUG_SIMULATION,
+    DEBUG_LOG_DIR,
     DEFAULT_DEBUG_ENABLED,
     DEFAULT_DEBUG_FAULT_INJECTION,
     DEFAULT_DEBUG_SIMULATION,
 )
 from .ui import ui
+
+
+class Timestamp:
+
+    def __init__(self) -> None:
+        self._time: datetime = datetime.now(UTC)
+
+    def console(self) -> str:
+        return self._time.strftime(
+            "%Y-%m-%d %H:%M:%S.%f"
+        )[:-3]
+
+    def log(self) -> str:
+        return self._time.isoformat()
+
+    def file(self) -> str:
+        return self._time.strftime(
+            "%Y%m%d_%H%M%S"
+        )
 
 
 class Debug:
@@ -103,6 +129,8 @@ class Debug:
         if fault_injection is not None:
             cls._fault_injection = fault_injection
 
+        cls.Log.init()
+
         cls._show_current_debug_settings()
 
     @classmethod
@@ -117,28 +145,44 @@ class Debug:
     def fault_injection(cls) -> bool:
         return cls._enabled and cls._fault_injection
 
+    @classmethod
+    def write(
+        cls,
+        timestamp: Timestamp,
+        message: str,
+    ) -> None:
+
+        if not cls._enabled:
+            return
+
+        ui.line(
+            f"[#]: {timestamp.console()}: {message}",
+            ui.COLOR_DEBUG,
+            tag_color=ui.COLOR_DEFAULT,
+        )    
+
     class DTB:
 
         # ===================
         # Debug Trace Binding
         # ===================
 
-        _debug_id: int = 0
+        @dataclass(frozen=True)
+        class _DebugInfo:
+            timestamp: Timestamp
 
         @classmethod
         def register(
             cls,
             error: Exception,
-            message: str,
+            timestamp: Timestamp,
         ) -> None:
 
             if not Debug._enabled:
                 return
 
-            cls._debug_id += 1
-
-            error._debug_info = (  # pyright: ignore[reportAttributeAccessIssue]
-                f"Debug ID {cls._debug_id:05d}: {message}"
+            error._debug_info = cls._DebugInfo(  # pyright: ignore[reportAttributeAccessIssue]
+                timestamp=timestamp,
             )
 
         @classmethod
@@ -151,7 +195,11 @@ class Debug:
             if not Debug._enabled:
                 return
 
-            debug_info = getattr(source, "_debug_info", None)
+            debug_info = getattr(
+                source,
+                "_debug_info",
+                None,
+            )
 
             if debug_info is None:
                 return
@@ -159,17 +207,113 @@ class Debug:
             error._debug_info = debug_info  # pyright: ignore[reportAttributeAccessIssue]
 
         @classmethod
-        def error_info(
+        def log(
             cls,
             error: Exception,
-        ) -> str:
+            message: str,
+        ) -> None:
 
-            return getattr(
+            if not Debug._enabled:
+                return
+
+            debug_info = getattr(
                 error,
                 "_debug_info",
-                "Debug ID: not associated",
+                None,
             )
+
+            if debug_info is None:
+                return
+
+            Debug.Log.write(
+                "ERRSYS",
+                debug_info.timestamp,
+                message,
+            )
+
+    class Log:
+
+        _file: Path | None = None
+        _lock = Lock()
+
+        @classmethod
+        def init(cls) -> None:
+            cls._file = None
+
+
+        @classmethod
+        def write(
+            cls,
+            source: str,
+            timestamp: Timestamp,
+            message: str,
+            context_cat: str | None = None,
+            context_val: str | None = None,
+        ) -> None:
+
+            if not Debug._enabled:
+                return
+
+            record = {
+                "timestamp": timestamp.log(),
+                "source": source,
+                "message": message,
+            }
+
+            if context_cat is not None:
+                record["context_cat"] = context_cat
+
+            if context_val is not None:
+                record["context_val"] = context_val
+
+            with cls._lock:
+
+                if cls._file is None:
+                    cls._file = (
+                        DEBUG_LOG_DIR
+                        / f"{Timestamp().file()}.jsonl"
+                    )
+
+                DEBUG_LOG_DIR.mkdir(
+                    parents=True,
+                    exist_ok=True,
+                )
+
+                with cls._file.open(
+                    "a",
+                    encoding="utf-8",
+                ) as file:
+
+                    json.dump(
+                        record,
+                        file,
+                        ensure_ascii=False,
+                    )
+
+                    file.write("\n")
 
 
 # Alias della classe statica che gestisce il debug
 debug = Debug
+
+
+"""
+error = SomeError(...)
+
+debug_info = Debug.message(
+    message,
+    artwork_id,
+)
+
+Debug.DTB.register(
+    error,
+    debug_info,
+)
+
+Debug.Log.write(
+    "DEBUG",
+    debug_info,
+)
+
+raise error
+"""
